@@ -64,7 +64,7 @@ $ npx jest
 Install this module as a dependency into another project
 
 ```
-$ yarn add 'https://www.github.io/subspace/module_name'
+$ yarn add 'https://www.github.com/subspace/module_name'
 ```
 
 Require this module inside a script
