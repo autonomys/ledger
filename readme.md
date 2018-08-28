@@ -9,8 +9,28 @@ A boilerplate repo for new subspace modules that includes
 
 ## Setup
 
-Fork this repo and change the name to module_name  
-Edit package.json with new module_name
+Clone a bare copy of this repo locally
+
+```
+git clone --bare https://github.com/subspace/boilerplate.git
+```
+
+Create a new empty repo in the subspace org with name: module_name  
+Mirror push to the new repo
+
+```
+$ cd boilerplate.git
+$ git push --mirror https://www.github.com/subspace/module_name.git
+```
+
+Remove the temporary repo 
+```
+$ cd ../
+$ rm -rf boilerplate.git
+```
+
+Clone and install the new repo locally   
+Make sure you edit package.json with new module_name
 
 ```
 $ git clone https://www.github.com/subspace/module_name
