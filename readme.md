@@ -302,7 +302,7 @@ validateBlockSolution(solution, blockHash, publicKey) => {
 
 ### publishBlock()
 
-Publishes the current block when ?
+Publishes the current block 1 minute after last block is published
 
 ### validateBlock()
 
