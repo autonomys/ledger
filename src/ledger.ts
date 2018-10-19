@@ -24,7 +24,7 @@ export default class Ledger extends EventEmitter {
 
   // ToDo
 
-    // check
+    // all arrays should be sets
 
     // Determine when to farm the next block 
     // Bootstrap the chain
@@ -46,6 +46,8 @@ export default class Ledger extends EventEmitter {
       // adjust space reserved
       // adjust space available 
 
+ 
+ // convert all of these to sets
   plot: string[] = []
   chain: string[] = []
   validBlocks: string[] = []
@@ -496,7 +498,7 @@ export default class Ledger extends EventEmitter {
     return tx
   }
 
-  public async createContractTx(contract: interfaces.IContract) {
+  public async createContractTx(contract: interfaces.IContractObject) {
     // reserve space on SSDB with a storage contract
     let cost
     if (contract.ttl) {  // mutable storage contract
@@ -508,14 +510,14 @@ export default class Ledger extends EventEmitter {
 
     const contractScript: interfaces.IContractScript = {
       key: contract.publicKey,
+      owner: contract.owner,
       size: contract.spaceReserved,
       ttl: contract.ttl,
-      replicas: contract.replicationFactor,
+      replicationFactor: contract.replicationFactor,
       signature: null
     }
 
     // sign with the private key of contract (not profile)
-    // const privateKeyObject = await crypto.getPrivateKeyObject(contract.privateKey, contract.passphrase)
     contractScript.signature = await crypto.sign(contractScript, contract.privateKeyObject)
 
     // create the tx 
@@ -733,10 +735,14 @@ export default class Ledger extends EventEmitter {
       case('contract'):
         // add the contract to contracts
         this.contracts.set(
-          tx.value.script.key, {
-            client: tx.value.sender,
-            size: tx.value.script.size,
-            ttl: tx.value.script.ttl
+          crypto.getHash(tx.value.script.key), {
+            kind: 'contractData',
+            publicKey: tx.value.script.key,
+            clientKey: tx.value.sender,
+            spaceReserved: tx.value.script.size,
+            replicationFactor: tx.value.script.replicas,
+            ttl: tx.value.script.ttl,
+            createdAt: tx.value.timeStamp
           }
         )
 

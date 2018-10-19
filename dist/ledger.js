@@ -29,7 +29,7 @@ class Ledger extends events_1.EventEmitter {
         this.profile = profile;
         this.tracker = tracker;
         // ToDo
-        // check
+        // all arrays should be sets
         // Determine when to farm the next block 
         // Bootstrap the chain
         // Join an existing chain
@@ -46,6 +46,7 @@ class Ledger extends events_1.EventEmitter {
         // remove contracts
         // adjust space reserved
         // adjust space available 
+        // convert all of these to sets
         this.plot = [];
         this.chain = [];
         this.validBlocks = [];
@@ -420,22 +421,22 @@ class Ledger extends events_1.EventEmitter {
         // reserve space on SSDB with a storage contract
         let cost;
         if (contract.ttl) { // mutable storage contract
-            cost = this.costOfMutableStorage * contract.reserved * contract.replicas * contract.ttl;
+            cost = this.costOfMutableStorage * contract.spaceReserved * contract.replicationFactor * contract.ttl;
         }
         else { // immutable storage contract
-            cost = this.costOfImmutableStorage * contract.reserved;
-            contract.replicas = Math.floor(Math.log2(this.hostCount));
+            cost = this.costOfImmutableStorage * contract.spaceReserved;
+            contract.replicationFactor = Math.floor(Math.log2(this.hostCount));
         }
         const contractScript = {
-            key: contract.publicKeyArmored,
-            size: contract.reserved,
+            key: contract.publicKey,
+            owner: contract.owner,
+            size: contract.spaceReserved,
             ttl: contract.ttl,
-            replicas: contract.replicas,
+            replicationFactor: contract.replicationFactor,
             signature: null
         };
         // sign with the private key of contract (not profile)
-        const privateKeyObject = await crypto_1.default.getPrivateKeyObject(contract.privateKeyArmored, contract.passphrase);
-        contractScript.signature = await crypto_1.default.sign(contractScript, privateKeyObject);
+        contractScript.signature = await crypto_1.default.sign(contractScript, contract.privateKeyObject);
         // create the tx 
         const nexusAddress = crypto_1.default.getHash('nexus');
         const tx = await this.createTx('contract', nexusAddress, cost, contractScript);
@@ -627,11 +628,15 @@ class Ledger extends events_1.EventEmitter {
                 this.spaceAvailable += tx.value.script.size;
                 break;
             case ('contract'):
-                // add the conttract to contracts
-                this.contracts.set(tx.value.script.key, {
-                    client: tx.value.sender,
-                    size: tx.value.script.size,
-                    ttl: tx.value.script.ttl
+                // add the contract to contracts
+                this.contracts.set(crypto_1.default.getHash(tx.value.script.key), {
+                    kind: 'contractData',
+                    publicKey: tx.value.script.key,
+                    clientKey: tx.value.sender,
+                    spaceReserved: tx.value.script.size,
+                    replicationFactor: tx.value.script.replicas,
+                    ttl: tx.value.script.ttl,
+                    createdAt: tx.value.timeStamp
                 });
                 // credit nexus
                 if (this.balances.has(nexusAddress)) {

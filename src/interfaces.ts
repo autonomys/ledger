@@ -33,7 +33,7 @@ export interface ITx {
   value: {
     type: string
     sender: string      // full public key of sender
-    receiver: string    // address of sender
+    receiver: string    // address of receiver
     amount: number       // simple ledger to start
     fee: number         // fee for this tx (size based)
     script: any         // dummy contract info (pledge or reservation)
@@ -50,9 +50,10 @@ export interface IPledgeScript {
 
 export interface IContractScript {
   key: string       // contract public key 
+  owner: string     // public key of contract owner 
   size: number      // size of contract in GB
   ttl: number       // time-to-live in ms
-  replicas: number  // number of replicas for each shard or object
+  replicationFactor: number  // number of replicas for each shard or object
   signature: string // signature of contract using contract key 
 }
 
@@ -63,8 +64,10 @@ export interface INexusScript {
 }
 
 // same as wallet (need to dedupe)
-export interface IContract {
+export interface IContractObject {
+  kind: 'contractObject'
   id: string
+  owner: string
   name: string
   email: string
   passphrase: string
@@ -74,7 +77,7 @@ export interface IContract {
   spaceUsed: number
   createdAt: number
   updatedAt: number
-  recordIndex: string[]
+  recordIndex: Set<string>
   publicKey: string
   privateKey: string
   privateKeyObject: any
@@ -89,9 +92,13 @@ export interface IPledgeData {
 }
 
 export interface IContractData {
-  client: string,
-  size: number
+  kind: 'contractData'
+  publicKey: string
+  clientKey: string
+  createdAt: number
   ttl: number 
+  spaceReserved: number
+  replicationFactor: number
 }
 
 // For later, when ready to switch to full UTXO model
@@ -106,4 +113,3 @@ export interface IOutput {
   recipient: string     // full public key of receipient
   amount: number        // amount to be sent to this recipient
 }
-
