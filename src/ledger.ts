@@ -24,7 +24,7 @@ export default class Ledger extends EventEmitter {
 
   // ToDo
 
-    // check
+    // all arrays should be sets
 
     // Determine when to farm the next block 
     // Bootstrap the chain
@@ -46,6 +46,8 @@ export default class Ledger extends EventEmitter {
       // adjust space reserved
       // adjust space available 
 
+ 
+ // convert all of these to sets
   plot: string[] = []
   chain: string[] = []
   validBlocks: string[] = []
@@ -54,8 +56,8 @@ export default class Ledger extends EventEmitter {
   invalidTxs: string[] = []
 
   balances: Map <string, number> = new Map()
-  pledges: Map <string, interfaces.PledgeData> = new Map()
-  contracts: Map <string, interfaces.ContractData> = new Map()
+  pledges: Map <string, interfaces.IPledgeData> = new Map()
+  contracts: Map <string, interfaces.IContractData> = new Map()
 
   spacePledged: number = 0
   mutableStorageReserved: number = 0
@@ -170,7 +172,7 @@ export default class Ledger extends EventEmitter {
     return this.chain.length - 1
   }
 
-  private calculateTxFee(tx: interfaces.Tx) {
+  private calculateTxFee(tx: interfaces.ITx) {
     return CREDITS_PER_BYTE * Buffer.byteLength(JSON.stringify(tx.value))
   }
 
@@ -197,11 +199,11 @@ export default class Ledger extends EventEmitter {
       // calculate the proportion of space used
       // calculate the cost of storage
 
-    const payments: interfaces.NexusScript[] = []
+    const payments: interfaces.INexusScript[] = []
 
     // each block check the pledges to see which are due
     const blockHeight = this.getBlockHeight()
-    const pledges: interfaces.PledgeData[] = []
+    const pledges: interfaces.IPledgeData[] = []
     this.pledges.forEach(pledge => {
       if (pledge.blockDue === blockHeight) {
         pledges.push(pledge)
@@ -292,7 +294,7 @@ export default class Ledger extends EventEmitter {
       proofArray.push(key)
     }
 
-    const proof: interfaces.Proof = {
+    const proof: interfaces.IProof = {
       id: crypto.getHash(JSON.stringify(proofArray)),
       size: size,
       seed: key,
@@ -352,7 +354,7 @@ export default class Ledger extends EventEmitter {
       time = this.createProofOfTime(solution)
     }
 
-    let block: interfaces.Block = {
+    let block: interfaces.IBlock = {
       key: null,
       value: {
         height: this.getBlockHeight() + 1,
@@ -375,7 +377,7 @@ export default class Ledger extends EventEmitter {
     }
 
     block.value.reward = await this.createRewardTx()
-    const nexusPayments: interfaces.NexusScript[] = this.calculateNexusPayments()
+    const nexusPayments: interfaces.INexusScript[] = this.calculateNexusPayments()
     for (const payment of nexusPayments) {
       const nexusTx = await this.createNexusTx(payment.receiver, payment.amount, payment.contract)  
       block.value.nexus.push(nexusTx)
@@ -386,7 +388,7 @@ export default class Ledger extends EventEmitter {
     return block
   }
 
-  private async isValidBlock(block: interfaces.Block) {
+  private async isValidBlock(block: interfaces.IBlock) {
 
     // has valid id (hash of value)
     if (!(crypto.isValidHash(block.key, JSON.stringify(block.value)))) return false
@@ -429,7 +431,7 @@ export default class Ledger extends EventEmitter {
     return true   
   }
 
-  public async onBlock(block: interfaces.Block) { 
+  public async onBlock(block: interfaces.IBlock) { 
     // called from core every time a new block is received via gossip
 
     // how do you know when you have the best block?
@@ -458,7 +460,7 @@ export default class Ledger extends EventEmitter {
   }
 
   public async createTx(type = 'credit', address: string, amount = 0, script: any = null) {
-    const tx: interfaces.Tx = {
+    const tx: interfaces.ITx = {
       key: null,
       value: {
         type: type,
@@ -491,32 +493,32 @@ export default class Ledger extends EventEmitter {
     // pledge a new proof of space to the ledger
     const proof = this.profile.proof.id 
     const size = this.profile.proof.size
-    const pledge: interfaces.PledgeScript = { proof, size, interval }
+    const pledge: interfaces.IPledgeScript = { proof, size, interval }
     const tx = await this.createTx('pledge', null, 0, pledge)
     return tx
   }
 
-  public async createContractTx(contract: interfaces.Contract) {
+  public async createContractTx(contract: interfaces.IContractObject) {
     // reserve space on SSDB with a storage contract
     let cost
     if (contract.ttl) {  // mutable storage contract
-      cost = this.costOfMutableStorage * contract.reserved * contract.replicas * contract.ttl
+      cost = this.costOfMutableStorage * contract.spaceReserved * contract.replicationFactor * contract.ttl
     } else {  // immutable storage contract
-      cost = this.costOfImmutableStorage * contract.reserved
-      contract.replicas = Math.floor(Math.log2(this.hostCount))
+      cost = this.costOfImmutableStorage * contract.spaceReserved
+      contract.replicationFactor = Math.floor(Math.log2(this.hostCount))
     }
 
-    const contractScript: interfaces.ContractScript = {
-      key: contract.publicKeyArmored,
-      size: contract.reserved,
+    const contractScript: interfaces.IContractScript = {
+      key: contract.publicKey,
+      owner: contract.owner,
+      size: contract.spaceReserved,
       ttl: contract.ttl,
-      replicas: contract.replicas,
+      replicationFactor: contract.replicationFactor,
       signature: null
     }
 
     // sign with the private key of contract (not profile)
-    const privateKeyObject = await crypto.getPrivateKeyObject(contract.privateKeyArmored, contract.passphrase)
-    contractScript.signature = await crypto.sign(contractScript, privateKeyObject)
+    contractScript.signature = await crypto.sign(contractScript, contract.privateKeyObject)
 
     // create the tx 
     const nexusAddress = crypto.getHash('nexus')
@@ -526,7 +528,7 @@ export default class Ledger extends EventEmitter {
 
   private async createRewardTx() {
     // create the coinbase tx or block reward on computing a block solution  
-    const tx: interfaces.Tx = {
+    const tx: interfaces.ITx = {
       key: null,
       value: {
         type: 'reward',
@@ -546,7 +548,7 @@ export default class Ledger extends EventEmitter {
   }
 
   private async createNexusTx(receiver: string, amount: number, contract: string) {
-    const tx: interfaces.Tx = {
+    const tx: interfaces.ITx = {
       key: null,
       value: {
         type: 'nexus',
@@ -567,7 +569,7 @@ export default class Ledger extends EventEmitter {
     return tx
   }
 
-  private async isValidTx(tx: interfaces.Tx) {
+  private async isValidTx(tx: interfaces.ITx) {
     
     // hash valid id (value hash)
     if (tx.key !== crypto.getHash(JSON.stringify(tx.value))) return false
@@ -610,7 +612,7 @@ export default class Ledger extends EventEmitter {
     return true
   }
 
-  private async isValidPledgeTx(tx: interfaces.Tx) {
+  private async isValidPledgeTx(tx: interfaces.ITx) {
 
     // validate pledge (proof of space)
     const valid = await this.isValidProofofSpace(tx.value.sender, tx.value.script.size, tx.value.script.proof)
@@ -625,7 +627,7 @@ export default class Ledger extends EventEmitter {
     return true
   }
 
-  private async isValidContractTx(tx: interfaces.Tx) {
+  private async isValidContractTx(tx: interfaces.ITx) {
     // deterimine if a given contract tx is valid 
     
     if (tx.value.script.ttl) {  // mutable storage contract
@@ -660,7 +662,7 @@ export default class Ledger extends EventEmitter {
     return true
   }
 
-  private isValidNexusTx(tx: interfaces.Tx) {
+  private isValidNexusTx(tx: interfaces.ITx) {
   
     // does sender = nexus
     if (!(crypto.getHash('nexus') === tx.value.sender)) return false
@@ -672,7 +674,7 @@ export default class Ledger extends EventEmitter {
     return true   
   }
 
-  private isValidRewardTx(tx: interfaces.Tx) {
+  private isValidRewardTx(tx: interfaces.ITx) {
     // has null sender
     if(!tx.value.sender === null) return false
 
@@ -685,7 +687,7 @@ export default class Ledger extends EventEmitter {
     return true
   }
 
-  public async onTx(tx: interfaces.Tx) {
+  public async onTx(tx: interfaces.ITx) {
     // called from core every time a new tx is received via gossip
 
     // is this a new tx?
@@ -731,12 +733,16 @@ export default class Ledger extends EventEmitter {
           this.spaceAvailable += tx.value.script.size
         break
       case('contract'):
-        // add the conttract to contracts
+        // add the contract to contracts
         this.contracts.set(
-          tx.value.script.key, {
-            client: tx.value.sender,
-            size: tx.value.script.size,
-            ttl: tx.value.script.ttl
+          crypto.getHash(tx.value.script.key), {
+            kind: 'contractData',
+            publicKey: tx.value.script.key,
+            clientKey: tx.value.sender,
+            spaceReserved: tx.value.script.size,
+            replicationFactor: tx.value.script.replicas,
+            ttl: tx.value.script.ttl,
+            createdAt: tx.value.timeStamp
           }
         )
 
