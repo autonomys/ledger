@@ -1,115 +1,68 @@
-export interface IProof {
-  id: string          // hash of my proof chain
-  size: number        // size of proof in GB
-  seed: string        // my public key 
-  plot: string[]      // the actual proof chain
-  createdAt: number  // when created
-}
 
 export interface IBlock {
-  key: string           // hash of block value
-  value: {
-    height: number      // block sequence number
-    lastBlock: string   // hash of previous block
-    solution: string    // closest solution by XOR
-    time: number        // time in ms after last block
-    pledge: number      // size of pledge of block winner
-    timestamp: number   // time block is published
-    reward: ITx          // coin base tx
-    nexus: ITx[]         // all nexus payments
-    txs: string[]       // array of txs in this block
-    key: string         // public key of proposer
-    spacePledged: number 
-    immutableSpaceReserved: number
-    mutableSpaceReserved: number
-    costOfMutableStorage: number
-    costOfImmutableStorage: number
-    signature: string   // signature of proposer
-  }
+  // Ledger Data
+  height: number            // block sequence number
+  lastBlock: string         // hash of previous block
+  spacePledged: number 
+  immutableReserved: number
+  mutableReserved: number
+  immutableCost: number
+  mutableCost: number
+  creditSupply: number
+  hostCount: number
+
+  // Proposer Data
+  solution: string      // farmer closest solution by XOR
+  delay: number         // time delay before publish
+  pledge: number        // size of pledge of proposing farmer
+  publicKey: string     // full public key of farmer
+  signature: string     // farmer signature
+
+  // Tx Data
+  txSet: Set<string>    // set of tx in the block
 }
 
 export interface ITx {
-  key: string           // hash of tx value
-  value: {
-    type: string
-    sender: string      // full public key of sender
-    receiver: string    // address of receiver
-    amount: number       // simple ledger to start
-    fee: number         // fee for this tx (size based)
-    script: any         // dummy contract info (pledge or reservation)
-    timeStamp: number   // time when transaction is published
-    signature: string   // signature of sender
-  }
+  type: string
+  sender: string      // full public key of sender
+  receiver: string    // address of receiver
+  amount: number      // simple ledger to start
+  cost: number        // fee for this tx (size based)
+  signature: string   // sender signature, authorizing the transfer
+
+  // optional reward tx data
+  lastBlock?: string
+  
+  // optional pledge tx data
+  pledgeProof?: string
+  spacePledged?: number
+  pledgeInterval?: number
+
+  // optional contract tx data
+  spaceReserved?: number
+  ttl?: number
+  replicationFactor?: number
+  contractKey?: string
+  contractSignature?: string
+  recordIndex?: Set<string>
+
+  // nexus tx data
+  pledgeTx?: string   // host pledge tx id 
 }
 
-export interface IPledgeScript {
-  proof: string     // hash of my proofchain (proof id)
-  size: number      // number of GB pledged
-  interval: number  // days between payments
-}
-
-export interface IContractScript {
-  key: string       // contract public key 
-  owner: string     // public key of contract owner 
-  size: number      // size of contract in GB
-  ttl: number       // time-to-live in ms
-  replicationFactor: number  // number of replicas for each shard or object
-  signature: string // signature of contract using contract key 
-}
-
-export interface INexusScript {
-  receiver: string  // address of host being payed (hash)
-  amount: number    // weighted payment
-  contract: string  // host pledge tx 
-}
-
-// same as wallet (need to dedupe)
-export interface IContractObject {
-  kind: 'contractObject'
-  id: string
-  owner: string
-  name: string
-  email: string
-  passphrase: string
-  ttl: number
-  replicationFactor: number
-  spaceReserved: number
-  spaceUsed: number
-  createdAt: number
-  updatedAt: number
-  recordIndex: Set<string>
-  publicKey: string
-  privateKey: string
-  privateKeyObject: any
-}
-
-export interface IPledgeData {
+export interface IPledge {
   host: string
-  interval: number
-  blockDue: number
   size: number
-  pledge: string
+  interval: number
+  proof: string
+  createdAt: number
 }
 
-export interface IContractData {
-  kind: 'contractData'
+export interface IContract {
   publicKey: string
   clientKey: string
-  createdAt: number
-  ttl: number 
   spaceReserved: number
   replicationFactor: number
-}
-
-// For later, when ready to switch to full UTXO model
-
-export interface IInput {
-  sender: string        // full public key of sender
-  amount: number        // number of subspace credits
-  signature: string     // signature authorizing this input
-}
-
-export interface IOutput {
-  recipient: string     // full public key of receipient
-  amount: number        // amount to be sent to this recipient
+  ttl: number
+  createdAt: number
 }
