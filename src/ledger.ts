@@ -30,8 +30,6 @@ const MONTH_IN_MS = 2628000000           // 1 momth in ms
 const HOUR_IN_MS = 3600000               // 1 hour in ms 
 const BLOCK_IN_MS = 600000               // 10 minutes in ms
 const MIN_PLEDGE_INTERVAL = MONTH_IN_MS  // minium/standard pledge interval for a host
-const CREDITS_PER_BYTE  = .000000001     // cost one byte of storage on the ledger, for tx fees
-const IMMUTABLE_STORAGE_MULTIPLIER = 10  // the relative cost of immutable storage to mutable storage
 const BLOCKS_PER_MONTH = 43200           // 1 min * 60 * 24 * 30 = 43,200 blocks
 const BYTES_PER_HASH = 1000000           // one hash per MB of pledge for simple proof of space, 32 eventually
 const INITIAL_BLOCK_REWARD = 100         // intial block reward ins subspace credits
@@ -134,9 +132,9 @@ export class Ledger {
     return true 
   }
 
-  getBalance(balances: Map<string,number>, address: string) {
+  getBalance(address: string) {
     // get the current UTXO balance for an address
-    return balances.get(address)
+    return this.pendingBalances.get(address)
   }
 
   getHeight() {
@@ -184,9 +182,7 @@ export class Ledger {
     blockData.txSet.add(rewardRecord.key)
 
     // create the pledge tx and record, add to tx set
-    // must be signed with the nexus key, or not signed at all
-    const pledgeTx = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.plot, pledgeInterval, blockData.immutableCost, profile.privateKeyObject)
-    const pledgeRecord = await this.database.createImmutableRecord(pledgeTx.value, false)
+    const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.plot, pledgeInterval, blockData.immutableCost)
     blockData.txSet.add(pledgeRecord.key)
 
     // create the block, sign and convert to a record
@@ -280,7 +276,7 @@ export class Ledger {
 
     // validate the tx
     const tx = new Tx(record.value.content)
-    const senderBalance = this.getBalance(this.pendingBalances, crypto.getHash(tx.value.sender))
+    const senderBalance = this.getBalance(crypto.getHash(tx.value.sender))
     const txTest = await tx.isValid(record.getSize(), this.clearedMutableCost, this.clearedImmutableCost, senderBalance, this.clearedHostCount)
 
     // ensure extra reward tx are not being created
@@ -749,8 +745,9 @@ export class Ledger {
     return tx
   }
 
-  public async createCreditTx(sender: string, receiver: string, amount: number, immutableCost: number, balance: number, privateKeyObject: any) {
+  public async createCreditTx(sender: string, receiver: string, amount: number) {
     // creates a credit tx instance and calculates the fee
+    const profile = this.wallet.getProfile()
 
     const txData: ITx = {
       type: 'credit',
@@ -762,20 +759,24 @@ export class Ledger {
     }
 
     const tx = new Tx(txData)
-    tx.setCost(immutableCost)
-    await tx.sign(privateKeyObject)
+    tx.setCost(this.clearedImmutableCost)
+    await tx.sign(profile.privateKeyObject)
 
     // check to make sure you have the funds available
-
-    if (tx.value.cost > balance) {
+    if (tx.value.cost > this.getBalance(sender)) {
       throw new Error('insufficient funds for tx')
     }
 
-    return tx
+    // create the record, add to the mempool, apply to balances
+    const txRecord = await this.database.createImmutableRecord(tx.value, false)
+    this.validTxs.set(txRecord.key, txRecord.value)
+    this.applyTx(tx, txRecord)
+    return txRecord
   }
 
-  public async createPledgeTx(sender: string, pledge: any, interval = MIN_PLEDGE_INTERVAL, immutableCost: number, privateKeyObject: any) {
+  public async createPledgeTx(sender: string, pledge: any, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
     // creates a pledge tx instance and calculates the fee
+    const profile = this.wallet.getProfile()
 
     const txData: ITx = {
       type: 'pledge',
@@ -791,8 +792,13 @@ export class Ledger {
 
     const tx = new Tx(txData)
     tx.setCost(immutableCost)
-    await tx.sign(privateKeyObject)
-    return tx
+    await tx.sign(profile.privateKeyObject)
+
+    // create the record, add to the mempool, apply to balances
+    const txRecord = await this.database.createImmutableRecord(tx.value, false)
+    this.validTxs.set(txRecord.key, txRecord.value)
+    this.applyTx(tx, txRecord)
+    return txRecord
   }
 
   public async createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number) {
@@ -1256,8 +1262,7 @@ export class Tx {
     const unsignedTx = { ...this.value} 
     unsignedTx.signature = null
     return await crypto.isValidSignature(unsignedTx, this.value.signature, this.value.sender)
-  }
-     
+  }    
 }
 
 // Block 0
