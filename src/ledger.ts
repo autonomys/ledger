@@ -175,7 +175,7 @@ export class Ledger {
 
     // create the reward tx and record, add to tx set
     const rewardTx = this.createRewardTx(profile.publicKey, blockData.immutableCost, blockData.previousBlock)
-    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privatKeyObject)
     block.addRewardTx(rewardRecord)
 
@@ -186,7 +186,7 @@ export class Ledger {
     // create the block, sign and convert to a record
    
     await block.sign(profile.privateKeyObject)
-    const blockRecord = await Record.createImmutable(block.value, false)
+    const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
     await blockRecord.unpack(profile.privateKeyObject)
     this.applyBlock(blockRecord)
   }
@@ -233,7 +233,7 @@ export class Ledger {
 
     // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
     const rewardTx = this.createRewardTx(profile.publicKey, this.clearedImmutableCost, blockData.previousBlock)
-    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
     block.addRewardTx(rewardRecord)
     
@@ -250,7 +250,7 @@ export class Ledger {
     block.getBestSolution(this.wallet.profile.proof.plot)
     block.getTimeDelay()
     await block.sign(profile.privateKeyObject)
-    const blockRecord = await Record.createImmutable(block.value, false)
+    const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
     await blockRecord.unpack(profile.privateKeyObject)
     return blockRecord
 
@@ -527,7 +527,7 @@ export class Ledger {
 
     const profile = this.wallet.getProfile()
     const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock)
-    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     rewardRecord.unpack(profile.privateKeyObject)
 
     // later, validate there is only one reward tx and one block storage tx per block
@@ -544,7 +544,7 @@ export class Ledger {
           }
         } else if(txId === rewardRecord.key) {
           // this is the reward tx 
-          creditSupply += rewardRecord.value.amount
+          creditSupply += rewardRecord.value.content.amount
         } else {
           // throw error for now, later request the tx, then validate the tx
           throw new Error('Tx in proposed block is not in the mem pool')
@@ -609,7 +609,7 @@ export class Ledger {
     // create a reward tx for this block and add to valid tx's    
     const profile = this.wallet.getProfile()
     const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock)
-    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(rewardRecord.key, rewardRecord.value)
 
@@ -685,7 +685,7 @@ export class Ledger {
 
     // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
     const contractTx = await this.createImmutableContractTx(NEXUS_ADDRESS, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
-    const contractRecord: Record = await Record.createImmutable(contractTx.value, false, false)
+    const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
     await contractRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(contractRecord.key, contractRecord.value)
 
@@ -747,7 +747,7 @@ export class Ledger {
     }
 
     // create the record, add to the mempool, apply to balances
-    const txRecord = await Record.createImmutable(tx.value, false)
+    const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, txRecord.value)
     this.applyTx(tx, txRecord)
@@ -758,7 +758,7 @@ export class Ledger {
     // creates a pledge tx instance and calculates the fee
     const profile = this.wallet.getProfile()
     const tx = await Tx.createPledgeTx(pledge, interval, immutableCost, profile.privateKeyObject)
-    const txRecord = await Record.createImmutable(tx.value, false)
+    const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, txRecord.value)
     this.applyTx(tx, txRecord)
@@ -886,7 +886,7 @@ export class Block {
     }
 
     // is the solution valid?
-    if (! this.isValidSolution(newBlock.value.ownerKey)) {
+    if (! this.isValidSolution(newBlock.value.publicKey)) {
       response.reason = 'invalid block, solution is invalid'
       return response
     }

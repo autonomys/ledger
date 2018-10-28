@@ -1,6 +1,5 @@
-"use strict";
 // Example Setup
-Object.defineProperty(exports, "__esModule", { value: true });
+// import module_name from './ledger'
 // test('sync_method', () => {
 //   expect(module_name.sync_method()).toBe('hello subspace')
 // })
