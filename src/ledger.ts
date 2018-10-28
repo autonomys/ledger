@@ -176,6 +176,7 @@ export class Ledger {
     // create the reward tx and record, add to tx set
     const rewardTx = this.createRewardTx(profile.publicKey, blockData.immutableCost, blockData.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    await rewardRecord.unpack(profile.privatKeyObject)
     block.addRewardTx(rewardRecord)
 
     // create the pledge tx and record, add to tx set
@@ -186,6 +187,7 @@ export class Ledger {
    
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false)
+    await blockRecord.unpack(profile.privateKeyObject)
     this.applyBlock(blockRecord)
   }
 
@@ -232,6 +234,7 @@ export class Ledger {
     // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
     const rewardTx = this.createRewardTx(profile.publicKey, this.clearedImmutableCost, blockData.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    await rewardRecord.unpack(profile.privateKeyObject)
     block.addRewardTx(rewardRecord)
     
     // add all valid tx's in the mempool into the tx set 
@@ -248,6 +251,7 @@ export class Ledger {
     block.getTimeDelay()
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false)
+    await blockRecord.unpack(profile.privateKeyObject)
     return blockRecord
 
     // should not be able to add any tx's created after my proof of time expires
@@ -425,11 +429,11 @@ export class Ledger {
 
         // simple solution for now is to pay the nexus the full fee for pledges 
         // we can resolve later once we have a better data structure for querying records 
+        const stringValue = await this.storage.get(tx.value.pledgeTx)
+        const value = JSON.parse(stringValue)
+        const pledgedRecord = Record.readPacked(tx.value.pledgeTx, value)
+        const pledgeCost = pledgedRecord.value.content.cost
 
-        const pledgeValue: IValue = JSON.parse( await this.storage.get(tx.value.pledgeTx))
-        const pledgeCost = pledgeValue.content.cost
-
-        
         // seperate tx fee from base storage cost
         txStorageCost = tx.getCost(this.clearedImmutableCost, 1)
         txFee = tx.value.cost - txStorageCost
@@ -521,8 +525,10 @@ export class Ledger {
     let hostCount = previousBlock.value.hostCount
     let creditSupply = previousBlock.value.creditSupply
 
+    const profile = this.wallet.getProfile()
     const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    rewardRecord.unpack(profile.privateKeyObject)
 
     // later, validate there is only one reward tx and one block storage tx per block
 
@@ -601,11 +607,14 @@ export class Ledger {
     // apply the block to UTXO and reset everything for the next round
 
     // create a reward tx for this block and add to valid tx's    
+    const profile = this.wallet.getProfile()
     const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    await rewardRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(rewardRecord.key, rewardRecord.value)
 
     // save the block and add to cleared blocks, flush the pending blocks 
+    await rewardRecord.pack(profile.publicKey)
     await this.storage.put(block.key, JSON.stringify(block.value))
     this.clearedBlocks.set(block.key, block.value)
     
@@ -655,6 +664,7 @@ export class Ledger {
 
       // get cost of storage to sum cost of storage contract and farmer fees
       recordIds.add(txId)
+      await txRecord.pack(profile.privateKeyObject)
       const recordSize = txRecord.getSize()
       const recordStorageCost = recordSize * oldImmutableCost
       blockSpaceReserved += recordSize
@@ -673,11 +683,10 @@ export class Ledger {
     const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.publicKey))
     this.pendingBalances.set(crypto.getHash(block.value.publicKey), farmerBalance + blockStorageFees)
 
-    const profile = this.wallet.getProfile()
-
     // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
     const contractTx = await this.createImmutableContractTx(NEXUS_ADDRESS, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
     const contractRecord: Record = await Record.createImmutable(contractTx.value, false, false)
+    await contractRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(contractRecord.key, contractRecord.value)
 
     // reset cleared balances back to pending (fast-forward cleared utxo to this block)
@@ -739,6 +748,7 @@ export class Ledger {
 
     // create the record, add to the mempool, apply to balances
     const txRecord = await Record.createImmutable(tx.value, false)
+    await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, txRecord.value)
     this.applyTx(tx, txRecord)
     return txRecord
@@ -749,6 +759,7 @@ export class Ledger {
     const profile = this.wallet.getProfile()
     const tx = await Tx.createPledgeTx(pledge, interval, immutableCost, profile.privateKeyObject)
     const txRecord = await Record.createImmutable(tx.value, false)
+    await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, txRecord.value)
     this.applyTx(tx, txRecord)
     return txRecord
