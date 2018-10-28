@@ -2,6 +2,7 @@
   "name": "@subspace/ledger",
   "version": "1.0.0",
   "main": "dist/ledger.js",
+  "types": "dist/ledger.d.ts",
   "author": "subspace",
   "license": "MIT",
   "private": true,

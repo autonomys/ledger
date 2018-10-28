@@ -37,7 +37,7 @@
 
 "@subspace/database@github:subspace/database":
   version "1.0.0"
-  resolved "git+ssh://git@github.com/subspace/database.git#0e84682d55c4fb6423e37288dbb47975953c8e93"
+  resolved "git+ssh://git@github.com/subspace/database.git#627bf40f34394bc7a78f0a3d5bb414d5f1226256"
   dependencies:
     "@subspace/crypto" "github:subspace/crypto"
     "@subspace/jump-consistent-hash" "github:subspace/jump-consistent-hash"
