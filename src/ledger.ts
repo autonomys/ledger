@@ -1,4 +1,4 @@
-import {IBlock, ITx, IPledge, IContract} from './interfaces'
+import {IBlock, IPledge, IContract} from './interfaces'
 import crypto from '@subspace/crypto'
 import { getClosestIdByXor } from '@subspace/utils'
 import { Record, IValue } from '@subspace/database'
@@ -1073,8 +1073,6 @@ export class Tx {
 
   // public methods
 
-  
-  
   public async isValid(size: number, immutableCost: number, mutableCost?: number, senderBalance?: number, hostCount?: number) {
     let response = {
       valid: false,
@@ -1082,22 +1080,22 @@ export class Tx {
     }
 
     // tx fee is correct
-    if (!(this.value.cost >= size * immutableCost)) {
+    if (!(this._value.cost >= size * immutableCost)) {
       response.reason = 'invalid tx, tx fee is too small'
       return response
     }
 
     // address has funds
-    if (this.value.type !== 'reward' || this.value.sender !== NEXUS_ADDRESS) {
-      if ((this.value.amount + this.value.cost) >= senderBalance) {
+    if (this._value.type !== 'reward' || this._value.sender !== NEXUS_ADDRESS) {
+      if ((this._value.amount + this._value.cost) >= senderBalance) {
         response.reason = 'invalid tx, insufficient funds in address'
         return response
       }
     }
 
     // has valid signature
-    if (['contract', 'pledge', 'credit'].includes(this.value.type)) {
-      if (this.value.receiver !== NEXUS_ADDRESS) {
+    if (['contract', 'pledge', 'credit'].includes(this._value.type)) {
+      if (this._value.receiver !== NEXUS_ADDRESS) {
         if (! await this.isValidSignature()) {
           response.reason = 'invalid tx, invalid signature'
           return response
@@ -1106,7 +1104,7 @@ export class Tx {
     }
     
     // special validation 
-    switch(this.value.type) {
+    switch(this._value.type) {
       case('pledge'): 
         response = this.isValidPledgeTx(response)
         break
@@ -1128,19 +1126,19 @@ export class Tx {
 
   public isValidPledgeTx(response: any) {
     // validate pledge (proof of space)
-    if (! crypto.isValidProofOfSpace(this.value.sender, this.value.spacePledged, this.value.pledgeProof)) {
+    if (! crypto.isValidProofOfSpace(this._value.sender, this.value.spacePledged, this._value.pledgeProof)) {
       response.reason = 'invalid pledge tx, incorrect proof of space'
       return response
     }
 
     // size within range 10 GB to 1 TB
-    if (!(this.value.spacePledged >= MIN_PLEDGE_SIZE || this.value.spacePledged <= MAX_PLEDGE_SIZE)) {
+    if (!(this._value.spacePledged >= MIN_PLEDGE_SIZE || this._value.spacePledged <= MAX_PLEDGE_SIZE)) {
       response.reason = 'invalid pledge tx, pledge size out of range'
       return response
     }
 
     // payment interval within range one month to one year (ms)
-    if (!(this.value.pledgeInterval >= MONTH_IN_MS || this.value.pledgeInterval <= YEAR_IN_MS)) {
+    if (!(this._value.pledgeInterval >= MONTH_IN_MS || this._value.pledgeInterval <= YEAR_IN_MS)) {
       response.reason = 'invalid pledge tx, pledge interval out of range'
       return response
     }
@@ -1151,46 +1149,42 @@ export class Tx {
     return response
   }
 
-  async isValidImmutableContractTxx(response: any) {
+  async isValidImmutableContractTxx(response: any) {}
 
-  }
-
-  async isValidMutableContractTx(response: any) {
-
-  }
+  async isValidMutableContractTx(response: any) {}
 
   public async isValidContractTx(response: any, hostCount: number, mutableCost: number, immutableCost: number) {
-    if (this.value.ttl) {  // mutable storage contract
+    if (this._value.ttl) {  // mutable storage contract
     
       // validate TTL within range
-      if (!(this.value.ttl >= HOUR_IN_MS || this.value.ttl <= YEAR_IN_MS)) {
+      if (!(this._value.ttl >= HOUR_IN_MS || this._value.ttl <= YEAR_IN_MS)) {
         response.reason = 'invalid contract tx, ttl out of range'
         return response
       }
 
       // validate replicas within range
-      if (!(this.value.replicationFactor >= 2 || this.value.replicationFactor <= Math.log2(hostCount))) {
+      if (!(this._value.replicationFactor >= 2 || this._value.replicationFactor <= Math.log2(hostCount))) {
         response.reason = 'invalid contract tx, replicas out of range'
         return response
       }
 
       // validate size within range
-      if (!(this.value.spaceReserved >= MIN_MUTABLE_CONTRACT_SIZE || this.value.spaceReserved <= MAX_MUTABLE_CONTRACT_SIZE)) {
+      if (!(this._value.spaceReserved >= MIN_MUTABLE_CONTRACT_SIZE || this._value.spaceReserved <= MAX_MUTABLE_CONTRACT_SIZE)) {
         response.reason = 'invalid contract tx, mutable space reserved out of range'
         return response
       }
 
       // validate the cost 
-      if (this.value.amount !== (mutableCost * this.value.spaceReserved * this.value.replicationFactor * this.value.ttl)) {
+      if (this._value.amount !== (mutableCost * this._value.spaceReserved * this._value.replicationFactor * this.value.ttl)) {
         response.reason = 'invalid contract tx, incorrect cost of mutable space reserved'
         return response
       }
 
       // validate contract signature 
-      const txData = { ...this.value }
+      const txData = { ...this._value }
       txData.contractSig = null
 
-      if (!(await crypto.isValidSignature(txData, this.value.contractSig, this.value.contractKey))) {
+      if (!(await crypto.isValidSignature(txData, this._value.contractSig, this._value.contractKey))) {
         response.reason = 'invalid contract tx, incorrect contract signature'
         return response
       }
@@ -1200,13 +1194,13 @@ export class Tx {
     } else {  // immutable storage contract
 
       // validate size within range
-      if (!(this.value.spaceReserved >= MIN_IMMUTABLE_CONTRACT_SIZE || this.value.spaceReserved <= MAX_IMMUTABLE_CONTRACT_SIZE)) {
+      if (!(this._value.spaceReserved >= MIN_IMMUTABLE_CONTRACT_SIZE || this._value.spaceReserved <= MAX_IMMUTABLE_CONTRACT_SIZE)) {
         response.reason = 'invalid contract tx, immutable space reserved out of range'
         return response
       }
 
       // validate the cost
-      if (this.value.amount !== (immutableCost * this.value.spaceReserved * this.value.replicationFactor)) {
+      if (this._value.amount !== (immutableCost * this._value.spaceReserved * this._value.replicationFactor)) {
         response.reason = 'invalid contract tx, incorrect cost of immutable space reserved'
         return response
       }
@@ -1219,7 +1213,7 @@ export class Tx {
 
   public isValidNexusTx(response: any) {
     // does sender = nexus
-    if (this.value.sender !== NEXUS_ADDRESS) {
+    if (this._value.sender !== NEXUS_ADDRESS) {
       response.reason = 'invalid nexus tx, nexus address is not the recipient'
       return response
     }
@@ -1240,13 +1234,13 @@ export class Tx {
 
   public isValidRewardTx(response: any) {
     // has null sender
-    if(this.value.sender !== null) {
+    if(this._value.sender !== null) {
       response.reason = 'invalid reward tx, sender is not null'
       return response
     }
 
     // is less than or equal to 100 credits
-    if(this.value.amount !== INITIAL_BLOCK_REWARD) {
+    if(this._value.amount !== INITIAL_BLOCK_REWARD) {
       response.reason = 'invalid reward tx, invalid reward amount'
       return response
     }
@@ -1270,20 +1264,20 @@ export class Tx {
     let baseSize
     switch(this.value.type) {
       case('credit'):
-        baseSize = BASE_CREDIT_TX_RECORD_SIZE + this.value.amount.toString().length 
+        baseSize = BASE_CREDIT_TX_RECORD_SIZE + this._value.amount.toString().length 
         break
       case('pledge'):
-        baseSize = BASE_PLEDGE_TX_RECORD_SIZE + this.value.spacePledged.toString().length + this.value.pledgeInterval.toString().length + this.value.pledgeProof.toString().length
+        baseSize = BASE_PLEDGE_TX_RECORD_SIZE + this._value.spacePledged.toString().length + this._value.pledgeInterval.toString().length + this._value.pledgeProof.toString().length
         break
       case('contract'):
-        baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this.value.spaceReserved.toString().length + this.value.ttl.toString().length + this.value.replicationFactor.toString().length + this.value.contractKey.toString().length + this.value.contractSig.toString().length
+        baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this._value.spaceReserved.toString().length + this._value.ttl.toString().length + this._value.replicationFactor.toString().length + this._value.contractKey.toString().length + this._value.contractSig.toString().length
         break
       case('nexus'):
         // 64 bytes is size of string encoded SHA256
-        baseSize = BASE_NEXUS_TX_RECORD_SIZE + this.value.amount.toString().length + 64
+        baseSize = BASE_NEXUS_TX_RECORD_SIZE + this._value.amount.toString().length + 64
         break
       case('reward'):
-        baseSize = BASE_REWARD_TX_RECORD_SIZE + this.value.amount.toString().length 
+        baseSize = BASE_REWARD_TX_RECORD_SIZE + this._value.amount.toString().length 
         break
     }
     
@@ -1307,19 +1301,19 @@ export class Tx {
   }
 
   public async isValidSignature() {
-    const unsignedTx = { ...this.value} 
+    const unsignedTx = { ...this._value} 
     unsignedTx.signature = null
-    return await crypto.isValidSignature(unsignedTx, this.value.signature, this.value.sender)
+    return await crypto.isValidSignature(unsignedTx, this._value.signature, this._value.sender)
   } 
 
   // private methods
 
   private setCost(immutableCost: number, multiplier = TX_FEE_MULTIPLIER) {
-    this.value.cost = this.getCost(immutableCost, multiplier)
+    this._value.cost = this.getCost(immutableCost, multiplier)
   }
 
   private async sign(privateKeyObject: any) {
-    this.value.signature = await crypto.sign(JSON.stringify(this.value), privateKeyObject)
+    this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject)
   }
     
 }
