@@ -2,7 +2,7 @@
 export interface IBlock {
   // Ledger Data
   height: number            // block sequence number
-  lastBlock: string         // hash of previous block
+  previousBlock: string         // hash of previous block
   spacePledged: number 
   immutableReserved: number
   mutableReserved: number
@@ -13,7 +13,6 @@ export interface IBlock {
 
   // Proposer Data
   solution: string      // farmer closest solution by XOR
-  delay: number         // time delay before publish
   pledge: number        // size of pledge of proposing farmer
   publicKey: string     // full public key of farmer
   signature: string     // farmer signature
@@ -27,11 +26,11 @@ export interface ITx {
   sender: string      // full public key of sender
   receiver: string    // address of receiver
   amount: number      // simple ledger to start
-  cost: number        // fee for this tx (size based)
+  cost: number        // tx cost = immutable storage cost + miner fee
   signature: string   // sender signature, authorizing the transfer
 
   // optional reward tx data
-  lastBlock?: string
+  previousBlock?: string
   
   // optional pledge tx data
   pledgeProof?: string

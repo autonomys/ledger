@@ -1,8 +1,7 @@
 import {IBlock, ITx, IPledge, IContract} from './interfaces'
 import crypto from '@subspace/crypto'
 import { getClosestIdByXor } from '@subspace/utils'
-import { IValue } from '@subspace/database/dist/interfaces'
-import { DataBase, Record } from '@subspace/database'
+import { Record, IValue } from '@subspace/database'
 
 // Design Notes
 
@@ -92,19 +91,18 @@ export class Ledger {
   constructor(
     public storage: any,
     public wallet: any,
-    public database: DataBase,
   ) {
     this.pendingBalances.set(NEXUS_ADDRESS, 10000)
     this.pendingBalances.set(FARMER_ADDRESS, 0)
   }
 
-  computeMutableCost(creditSupply: number, spaceAvailable: number) {
+  private computeMutableCost(creditSupply: number, spaceAvailable: number) {
     // cost in credits for one byte of storage per ms 
     const mutableCost = creditSupply / (spaceAvailable * MIN_PLEDGE_INTERVAL)
     return mutableCost
   }
 
-  computeImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number) {
+  private computeImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number) {
     // the product of the cost of mutable storage and the ratio between immutable and mutable space reserved
     let multiplier = 1
     if (mutableReserved) {
@@ -117,36 +115,37 @@ export class Ledger {
     return immutableCost
   }    
 
-  isBestBlockSolution(solution: string) {
+  private isBestBlockSolution(solution: string) {
     // check to see if a given solution is the best solution for the curernt challenge
     const challenge = this.chain[this.chain.length - 1]
     const bestSolution = this.validBlocks[0]
-    if (bestSolution) {
-      const source = Buffer.from(challenge)
-      const contender = Buffer.from(bestSolution)
-      const challenger = Buffer.from(solution)
-      const targets = [contender, challenger]
-      const closest = getClosestIdByXor(source, targets)
-      if (contender === closest) return false
+    if (!bestSolution) {
+      return true
     }
-    return true 
+    const source = Buffer.from(challenge)
+    const contender = Buffer.from(bestSolution)
+    const challenger = Buffer.from(solution)
+    const targets = [contender, challenger]
+    const closest = getClosestIdByXor(source, targets)
+    return contender === closest
+  
   }
 
-  getBalance(address: string) {
+  public getBalance(address: string) {
     // get the current UTXO balance for an address
     return this.pendingBalances.get(address)
   }
 
-  getHeight() {
+  public getHeight() {
     // get the current height of the chain
     return this.chain.length
   }
 
-  getLastBlockId() {
+  public getLastBlockId() {
     return this.chain[this.chain.length - 1]
   }
 
-  async bootstrap(spacePledged = MIN_PLEDGE_SIZE, pledgeInterval = MIN_PLEDGE_INTERVAL) {
+  public async bootstrap(spacePledged = MIN_PLEDGE_SIZE, pledgeInterval = MIN_PLEDGE_INTERVAL) {
     // creates the genesis block to start the chain 
     // contains the reward tx and a single pledge tx, from the genesis host/farmer
     // does not contain a contract tx to pay this blocks storage (created in the next block)
@@ -156,7 +155,7 @@ export class Ledger {
 
     const blockData: IBlock = {
       height: 0,
-      lastBlock: null,
+      previousBlock: null,
       spacePledged: spacePledged,
       immutableReserved: 0,
       mutableReserved: 0,
@@ -165,7 +164,6 @@ export class Ledger {
       creditSupply: 100,
       hostCount: 1,
       solution: null,
-      delay: null,
       pledge: spacePledged,
       publicKey: profile.publicKey,
       signature: null,
@@ -177,8 +175,8 @@ export class Ledger {
     blockData.immutableCost = this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved)
 
     // create the reward tx and record, add to tx set
-    const rewardTx = this.createRewardTx(profile.publicKey, blockData.immutableCost, blockData.lastBlock)
-    const rewardRecord = await this.database.createImmutableRecord(rewardTx.value, false, false)
+    const rewardTx = this.createRewardTx(profile.publicKey, blockData.immutableCost, blockData.previousBlock)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
     blockData.txSet.add(rewardRecord.key)
 
     // create the pledge tx and record, add to tx set
@@ -188,11 +186,11 @@ export class Ledger {
     // create the block, sign and convert to a record
     const block = new Block(blockData)
     await block.sign(profile.privateKeyObject)
-    const blockRecord: Record = await this.database.createImmutableRecord(block.value, false)
+    const blockRecord = await Record.createImmutable(block.value, false)
     this.applyBlock(blockRecord)
   }
 
-  computeSolution() {
+  private computeSolution() {
     // called once a new block round starts
     // create a dummy block to compute solution and delay
     const block = new Block()
@@ -208,7 +206,7 @@ export class Ledger {
     }, time)
   }
 
-  async createBlock() {
+  private async createBlock() {
      // called from compute solution after my time delay expires or on bootstrap
      // since we are using pending stats, there cannot be any async code between stats assignment and creating the tx set, else they could get out of sync if a new tx is added during assignment
 
@@ -216,7 +214,7 @@ export class Ledger {
 
     const blockData: IBlock = {
       height: this.getHeight(),
-      lastBlock: this.getLastBlockId(),
+      previousBlock: this.getLastBlockId(),
       spacePledged: this.pendingSpacePledged,
       immutableReserved: this.pendingImmutableReserved,
       mutableReserved: this.pendingMutableReserved,
@@ -225,7 +223,6 @@ export class Ledger {
       creditSupply: this.pendingCreditSupply,
       hostCount: this.pendingHostCount,
       solution: null,
-      delay: null,
       pledge: this.wallet.profile.proof.size,
       publicKey: profile.publicKey,
       signature: null,
@@ -233,7 +230,7 @@ export class Ledger {
     }
 
     // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
-    const rewardTx = this.createRewardTx(profile.publicKey, this.clearedImmutableCost, blockData.lastBlock)
+    const rewardTx = this.createRewardTx(profile.publicKey, this.clearedImmutableCost, blockData.previousBlock)
     blockData.creditSupply += rewardTx.value.amount
     
     // add all valid tx's in the mempool into the tx set 
@@ -241,7 +238,7 @@ export class Ledger {
       blockData.txSet.add(txId)
      }
 
-    const rewardRecord = await this.database.createImmutableRecord(rewardTx.value, false, false)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
     blockData.txSet.add(rewardRecord.key)
 
     // compute cost of mutable and immutable storage for this block
@@ -253,7 +250,7 @@ export class Ledger {
     block.getBestSolution(this.wallet.profile.proof.plot)
     block.getTimeDelay()
     await block.sign(profile.privateKeyObject)
-    const blockRecord = await this.database.createImmutableRecord(block.value, false)
+    const blockRecord = await Record.createImmutable(block.value, false)
     return blockRecord
 
 
@@ -302,7 +299,7 @@ export class Ledger {
     return txTest
   }
 
-  async applyTx(tx: Tx, record: Record) {
+  private async applyTx(tx: Tx, record: Record) {
     // called three times
       // onTx -> apply each new tx to pending UTXO
         // dont know who the farmer is 
@@ -507,33 +504,33 @@ export class Ledger {
     const block = new Block(record.value.content)
 
     // fetch the last block header to compare
-    const lastBlockKey = this.chain[this.chain.length - 1]
-    const lastBlockRecordValue = this.clearedBlocks.get(lastBlockKey)
-    const lastBlock = {
-      key: lastBlockKey,
-      value: lastBlockRecordValue.content
+    const previousBlockKey = this.chain[this.chain.length - 1]
+    const previousBlockRecordValue = this.clearedBlocks.get(previousBlockKey)
+    const previousBlock = {
+      key: previousBlockKey,
+      value: previousBlockRecordValue.content
     }
 
     // is the block valid?
-    const blockTest = await block.isValid(record, lastBlock)
+    const blockTest = await block.isValid(record, previousBlock)
     if (!blockTest.valid) {
       this.invalidBlocks.push(record.key)
       return blockTest
     }
 
     // review the tx set for valid tx and validate block constants
-    let spacePledged = lastBlock.value.spacePledged
-    let immutableReserved = lastBlock.value.immutableReserved 
-    let mutableReserved = lastBlock.value.mutableReserved
-    let hostCount = lastBlock.value.hostCount
-    let creditSupply = lastBlock.value.creditSupply
+    let spacePledged = previousBlock.value.spacePledged
+    let immutableReserved = previousBlock.value.immutableReserved 
+    let mutableReserved = previousBlock.value.mutableReserved
+    let hostCount = previousBlock.value.hostCount
+    let creditSupply = previousBlock.value.creditSupply
 
-    const rewardTx = this.createRewardTx(block.value.publicKey, lastBlock.value.immutableCost, lastBlock.value.lastBlock)
-    const rewardRecord = await this.database.createImmutableRecord(rewardTx.value, false, false)
+    const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
 
     // later, validate there is only one reward tx and one block storage tx per block
 
-    for (const txId in block.value.txSet) {
+    for (const txId of block.value.txSet) {
       // check if in the memPool map
       if (! this.validTxs.has(txId)) {
         // if not in mempool check if it is invalid set
@@ -574,14 +571,14 @@ export class Ledger {
     const immutableCost = this.computeImmutableCost(mutableCost, mutableReserved, immutableReserved)
     
     // are the block constants calculated correctly?
-    if (spacePledged !== block.value.spacePledged ||
-        immutableReserved !== block.value.immutableReserved ||
-        mutableReserved !== block.value.mutableReserved ||
-        immutableCost !== block.value.immutableCost ||
-        mutableCost !== block.value.mutableCost ||
-        hostCount != block.value.hostCount ||
-        creditSupply !== block.value.creditSupply
-    ) {
+    if (!(spacePledged === block.value.spacePledged &&
+        immutableReserved === block.value.immutableReserved &&
+        mutableReserved === block.value.mutableReserved &&
+        immutableCost === block.value.immutableCost &&
+        mutableCost === block.value.mutableCost &&
+        hostCount === block.value.hostCount &&
+        creditSupply === block.value.creditSupply
+    )) {
       this.invalidBlocks.push(record.key)
       return {
         valid: false,
@@ -601,15 +598,15 @@ export class Ledger {
     return blockTest
   }
 
-  async applyBlock(block: Record) {
+  private async applyBlock(block: Record) {
     // called from bootstrap after block is ready
     // called from self after interval expires
     // this is the best block for this round
     // apply the block to UTXO and reset everything for the next round
 
     // create a reward tx for this block and add to valid tx's    
-    const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.lastBlock)
-    const rewardRecord = await this.database.createImmutableRecord(rewardTx.value, false, false)
+    const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock)
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
     this.validTxs.set(rewardRecord.key, rewardRecord.value)
 
     // save the block and add to cleared blocks, flush the pending blocks 
@@ -684,7 +681,7 @@ export class Ledger {
 
     // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
     const contractTx = await this.createImmutableContractTx(NEXUS_ADDRESS, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
-    const contractRecord: Record = await this.database.createImmutableRecord(contractTx.value, false, false)
+    const contractRecord: Record = await Record.createImmutable(contractTx.value, false, false)
     this.validTxs.set(contractRecord.key, contractRecord.value)
 
     // reset cleared balances back to pending (fast-forward cleared utxo to this block)
@@ -711,11 +708,12 @@ export class Ledger {
       } else {
         // drop the tx, client will have to create a new tx that covers tx fees
         this.validTxs.delete(key)
+        this.invalidTxs.add(key)
       }
     }
 
     // set a new interval to wait before applying the next most valid block
-    setInterval( async () => {
+    setTimeout( async () => {
       const blockId = this.validBlocks[0]
       const blockValue = this.pendingBlocks.get(blockId)
       const blockRecord = new Record(blockId, blockValue)
@@ -727,14 +725,14 @@ export class Ledger {
     }, BLOCK_IN_MS)    
   }
 
-  createRewardTx(receiver: string, immutableCost: number, lastBlock: string) {
+  public createRewardTx(receiver: string, immutableCost: number, previousBlock: string) {
     // creates a reward tx for any farmer instance and calculates the fee
 
     const txData: ITx = {
       type: 'reward',
       sender: null,
       receiver: receiver,
-      lastBlock,
+      previousBlock,
       amount: 100,
       cost: null,
       signature: null
@@ -768,7 +766,7 @@ export class Ledger {
     }
 
     // create the record, add to the mempool, apply to balances
-    const txRecord = await this.database.createImmutableRecord(tx.value, false)
+    const txRecord = await Record.createImmutable(tx.value, false)
     this.validTxs.set(txRecord.key, txRecord.value)
     this.applyTx(tx, txRecord)
     return txRecord
@@ -795,7 +793,7 @@ export class Ledger {
     await tx.sign(profile.privateKeyObject)
 
     // create the record, add to the mempool, apply to balances
-    const txRecord = await this.database.createImmutableRecord(tx.value, false)
+    const txRecord = await Record.createImmutable(tx.value, false)
     this.validTxs.set(txRecord.key, txRecord.value)
     this.applyTx(tx, txRecord)
     return txRecord
@@ -890,7 +888,7 @@ export class Block {
     this.value = blockData
   }
 
-  async isValid(newBlock: Record, lastBlock: {key: string, value: IBlock}) {
+  public async isValid(newBlock: Record, previousBlock: {key: string, value: IBlock}) {
     // check if the block is valid
 
     let response = {
@@ -900,13 +898,13 @@ export class Block {
     
 
     // is it at the correct height?
-    if (this.value.height !== lastBlock.value.height) {
+    if (this.value.height !== previousBlock.value.height) {
       response.reason = 'invalid block, wrong block height'
       return response
     }
 
     // does it reference the correct last block?
-    if (this.value.lastBlock !== lastBlock.key) {
+    if (this.value.previousBlock !== previousBlock.key) {
       response.reason = 'invalid block, references incorrect parent block'
       return response
     }
@@ -924,10 +922,11 @@ export class Block {
     }
 
     // is the delay valid?
-    if (! this.isValidTimeDelay()) {
-      response.reason = 'invalid block, time delay is invalid'
-      return response
-    }
+    // replace by checking the timestamp of last block plus delay
+    // if (! this.isValidTimeDelay()) {
+    //   response.reason = 'invalid block, time delay is invalid'
+    //   return response
+    // }
 
     // did they wait long enough before publishing the block? Later
 
@@ -948,7 +947,7 @@ export class Block {
 
     // // is the reward tx a valid tx?
     // const rewardTx = new Tx(rewardData.value.content)
-    // const rewardTxTest = await rewardTx.isValid(rewardRecord.getSize(), lastBlock.value.immutableCost)
+    // const rewardTxTest = await rewardTx.isValid(rewardRecord.getSize(), previousBlock.value.immutableCost)
     // if (!rewardTxTest.valid) {
     //   response.reason = 'invalid block, invalid reward tx'
     //   return response
@@ -965,7 +964,7 @@ export class Block {
 
     // // is the storage contract tx a valid tx?
     // const contractTx = new Tx(contractData.value.content)
-    // const contractTxTest = await contractTx.isValid(contractRecord.getSize(), lastBlock.value.immutableCost, lastBlock.value.mutableCost, null, lastBlock.value.hostCount)
+    // const contractTxTest = await contractTx.isValid(contractRecord.getSize(), previousBlock.value.immutableCost, previousBlock.value.mutableCost, null, previousBlock.value.hostCount)
     // if (!contractTxTest.valid) {
     //   response.reason = 'invalid block, invalid contract tx'
     //   return response
@@ -975,38 +974,33 @@ export class Block {
     return response
   }
 
-  getBestSolution(plot: Set<string>) {
+  public getBestSolution(plot: Set<string>) {
     // searches a plot for the best solution to the block challenge
     const bufferPlot = [...plot].map(solution => Buffer.from(solution))
-    const bufferChallnege = Buffer.from(this.value.lastBlock)
+    const bufferChallnege = Buffer.from(this.value.previousBlock)
     const bufferSoltuion = getClosestIdByXor(bufferChallnege, bufferPlot)
     this.value.solution = bufferSoltuion.toString()
     return this.value.solution
   }
 
-  isValidSolution(publicKey: string) {
+  public isValidSolution(publicKey: string) {
     // check if the included block solution is the best for the last block
     const seed = crypto.getHash(publicKey)
     const proof = crypto.createProofOfSpace(seed, this.value.pledge)
     return this.value.solution === this.getBestSolution(proof.plot)
   }
 
-  getTimeDelay(seed: string = this.value.solution ) {
+  public getTimeDelay(seed: string = this.value.solution ) {
     // computes the time delay for my solution, later a real VDF
-    this.value.delay = crypto.createProofOfTime(seed)
-    return this.value.delay
+   return crypto.createProofOfTime(seed)
   }
 
-  isValidTimeDelay() {
-    return this.getTimeDelay(this.value.solution) === this.value.delay
-  }
-
-  async sign(privateKeyObject: any) {
+  public async sign(privateKeyObject: any) {
     // signs the block
     this.value.signature = await crypto.sign(JSON.stringify(this.value), privateKeyObject)
   }
 
-  async isValidSignature() {
+  public async isValidSignature() {
     const unsignedBlock = { ...this.value} 
     unsignedBlock.signature = null
     return await crypto.isValidSignature(unsignedBlock, this.value.signature, this.value.publicKey)
@@ -1019,7 +1013,7 @@ export class Tx {
     this.value = txData
   }
   
-  async isValid(size: number, immutableCost: number, mutableCost?: number, senderBalance?: number, hostCount?: number) {
+  public async isValid(size: number, immutableCost: number, mutableCost?: number, senderBalance?: number, hostCount?: number) {
     let response = {
       valid: false,
       reason: <string> null
@@ -1070,7 +1064,7 @@ export class Tx {
     return response
   }
 
-  isValidPledgeTx(response: any) {
+  public isValidPledgeTx(response: any) {
     // validate pledge (proof of space)
     if (! crypto.isValidProofOfSpace(this.value.sender, this.value.spacePledged, this.value.pledgeProof)) {
       response.reason = 'invalid pledge tx, incorrect proof of space'
@@ -1103,7 +1097,7 @@ export class Tx {
 
   }
 
-  async isValidContractTx(response: any, hostCount: number, mutableCost: number, immutableCost: number) {
+  public async isValidContractTx(response: any, hostCount: number, mutableCost: number, immutableCost: number) {
     if (this.value.ttl) {  // mutable storage contract
     
       // validate TTL within range
@@ -1161,7 +1155,7 @@ export class Tx {
     return response
   }
 
-  isValidNexusTx(response: any) {
+  public isValidNexusTx(response: any) {
     // does sender = nexus
     if (this.value.sender !== NEXUS_ADDRESS) {
       response.reason = 'invalid nexus tx, nexus address is not the recipient'
@@ -1182,7 +1176,7 @@ export class Tx {
     return response
   }
 
-  isValidRewardTx(response: any) {
+  public isValidRewardTx(response: any) {
     // has null sender
     if(this.value.sender !== null) {
       response.reason = 'invalid reward tx, sender is not null'
@@ -1203,11 +1197,11 @@ export class Tx {
     return response
   }
 
-  setCost(immutableCost: number, multiplier = TX_FEE_MULTIPLIER) {
+  public setCost(immutableCost: number, multiplier = TX_FEE_MULTIPLIER) {
     this.value.cost = this.getCost(immutableCost, multiplier)
   }
 
-  getCost(immutableCost: number, incentiveMultiplier: number) {
+  public getCost(immutableCost: number, incentiveMultiplier: number) {
     // we have to carefully extrapolate the size since fee is based on size
     // we know the base record size and that each integer for amount and fee is one byte
     // also have to add in a small buffer that 
@@ -1254,11 +1248,11 @@ export class Tx {
     return finalfee
   }
 
-  async sign(privateKeyObject: any) {
+  public async sign(privateKeyObject: any) {
     this.value.signature = await crypto.sign(JSON.stringify(this.value), privateKeyObject)
   }
 
-  async isValidSignature() {
+  public async isValidSignature() {
     const unsignedTx = { ...this.value} 
     unsignedTx.signature = null
     return await crypto.isValidSignature(unsignedTx, this.value.signature, this.value.sender)
