@@ -1,4 +1,4 @@
-import {IBlock, IPledge, IContract} from './interfaces'
+import {IPledge, IContract} from './interfaces'
 import crypto from '@subspace/crypto'
 import { getClosestIdByXor } from '@subspace/utils'
 import { Record, IValue } from '@subspace/database'
@@ -98,8 +98,7 @@ export class Ledger {
 
   private computeMutableCost(creditSupply: number, spaceAvailable: number) {
     // cost in credits for one byte of storage per ms 
-    const mutableCost = creditSupply / (spaceAvailable * MIN_PLEDGE_INTERVAL)
-    return mutableCost
+    return creditSupply / (spaceAvailable * MIN_PLEDGE_INTERVAL)
   }
 
   private computeImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number) {
@@ -111,8 +110,7 @@ export class Ledger {
         multiplier = ratio * 100
       }
     }
-    const immutableCost = mutableCost * multiplier
-    return immutableCost
+    return mutableCost * multiplier
   }    
 
   private isBestBlockSolution(solution: string) {
@@ -128,7 +126,6 @@ export class Ledger {
     const targets = [contender, challenger]
     const closest = getClosestIdByXor(source, targets)
     return contender === closest
-  
   }
 
   public getBalance(address: string) {
@@ -153,15 +150,15 @@ export class Ledger {
 
     const profile = this.wallet.getProfile()
 
-    const blockData: IBlock = {
+    const blockData: Block['value'] = {
       height: 0,
       previousBlock: null,
-      spacePledged: spacePledged,
+      spacePledged: 0,
       immutableReserved: 0,
       mutableReserved: 0,
       immutableCost: 0,
       mutableCost: 0,
-      creditSupply: 100,
+      creditSupply: 0,
       hostCount: 1,
       solution: null,
       pledge: spacePledged,
@@ -170,21 +167,23 @@ export class Ledger {
       txSet: new Set()
     }
 
+    const block = new Block(blockData)
+
     // compute cost of mutable and immutable storage
-    blockData.mutableCost = this.computeMutableCost(blockData.creditSupply, blockData.spacePledged)
-    blockData.immutableCost = this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved)
+    block.setMutableCost(this.computeMutableCost(blockData.creditSupply, blockData.spacePledged))
+    block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
 
     // create the reward tx and record, add to tx set
     const rewardTx = this.createRewardTx(profile.publicKey, blockData.immutableCost, blockData.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
-    blockData.txSet.add(rewardRecord.key)
+    block.addRewardTx(rewardRecord)
 
     // create the pledge tx and record, add to tx set
     const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.plot, pledgeInterval, blockData.immutableCost)
-    blockData.txSet.add(pledgeRecord.key)
+    block.addPledgeTx(pledgeRecord)
 
     // create the block, sign and convert to a record
-    const block = new Block(blockData)
+   
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false)
     this.applyBlock(blockRecord)
@@ -193,7 +192,7 @@ export class Ledger {
   private computeSolution() {
     // called once a new block round starts
     // create a dummy block to compute solution and delay
-    const block = new Block()
+    const block = new Block(null)
     const solution = block.getBestSolution(this.wallet.profile.proof.plot)
     const time = block.getTimeDelay()
 
@@ -211,8 +210,7 @@ export class Ledger {
      // since we are using pending stats, there cannot be any async code between stats assignment and creating the tx set, else they could get out of sync if a new tx is added during assignment
 
     const profile = this.wallet.getProfile()
-
-    const blockData: IBlock = {
+    const blockData: Block['value'] = {
       height: this.getHeight(),
       previousBlock: this.getLastBlockId(),
       spacePledged: this.pendingSpacePledged,
@@ -229,30 +227,28 @@ export class Ledger {
       txSet: new Set()
     }
 
+    const block = await Block.create(blockData)
+
     // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
     const rewardTx = this.createRewardTx(profile.publicKey, this.clearedImmutableCost, blockData.previousBlock)
-    blockData.creditSupply += rewardTx.value.amount
+    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
+    block.addRewardTx(rewardRecord)
     
     // add all valid tx's in the mempool into the tx set 
     for (const [txId] of this.validTxs) {
-      blockData.txSet.add(txId)
+      block.addTx(txId)
      }
-
-    const rewardRecord = await Record.createImmutable(rewardTx.value, false, false)
-    blockData.txSet.add(rewardRecord.key)
-
+     
     // compute cost of mutable and immutable storage for this block
-    blockData.mutableCost = this.computeMutableCost(blockData.creditSupply, blockData.spacePledged)
-    blockData.immutableCost = this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved)
+    block.setMutableCost(this.computeMutableCost(blockData.creditSupply, blockData.spacePledged))
+    block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
 
-    // create the block, get solutions, sign and convert to a record
-    const block = new Block(blockData)
+    // get best solution, sign and convert to a record
     block.getBestSolution(this.wallet.profile.proof.plot)
     block.getTimeDelay()
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false)
     return blockRecord
-
 
     // should not be able to add any tx's created after my proof of time expires
     // should add validation to ensure nobody else is doing this 
@@ -795,13 +791,64 @@ export class Ledger {
 }
  
 export class Block {
-  value: IBlock
-
-  constructor(blockData?: IBlock) {
-    this.value = blockData
+  _value: {
+    height: number            
+    previousBlock: string 
+    spacePledged: number 
+    immutableReserved: number
+    mutableReserved: number
+    immutableCost: number
+    mutableCost: number
+    creditSupply: number
+    hostCount: number
+    txSet: Set<string>    // set of tx in the block
+    solution: string      // farmer closest solution by XOR
+    pledge: number        // size of pledge of proposing farmer
+    publicKey: string     // full public key of farmer
+    signature: string     // farmer signature
   }
 
-  public async isValid(newBlock: Record, previousBlock: {key: string, value: IBlock}) {
+  constructor(value: Block['value']) {}
+
+
+  // getters
+
+  get value() {
+    return this._value
+  }
+
+  // static methods
+
+  static async create(blockData: Block['value']) {
+    const block = new Block(blockData)
+    return block
+  }
+
+  // public methods
+
+  public addTx(tx: string) {
+    this._value.txSet.add(tx)
+  }
+
+  public setImmutableCost(cost: number) {
+    this._value.immutableCost = cost
+  }
+
+  public setMutableCost(cost: number) {
+    this._value.mutableCost = cost
+  }
+
+  public addRewardTx(rewardRecord: Record) {
+    this._value.creditSupply += rewardRecord.value.content.amount
+    this._value.txSet.add(rewardRecord.key)
+  }
+
+  public addPledgeTx(pledgeRecord: Record) {
+    this._value.spacePledged += pledgeRecord.value.content.spacePledged
+    this._value.txSet.add(pledgeRecord.key)
+  }
+
+  public async isValid(newBlock: Record, previousBlock: {key: string, value: Block['value']}) {
     // check if the block is valid
 
     let response = {
@@ -809,15 +856,14 @@ export class Block {
       reason: <string> null
     }
     
-
     // is it at the correct height?
-    if (this.value.height !== previousBlock.value.height) {
+    if (this._value.height !== previousBlock.value.height) {
       response.reason = 'invalid block, wrong block height'
       return response
     }
 
     // does it reference the correct last block?
-    if (this.value.previousBlock !== previousBlock.key) {
+    if (this._value.previousBlock !== previousBlock.key) {
       response.reason = 'invalid block, references incorrect parent block'
       return response
     }
@@ -892,32 +938,38 @@ export class Block {
     const bufferPlot = [...plot].map(solution => Buffer.from(solution))
     const bufferChallnege = Buffer.from(this.value.previousBlock)
     const bufferSoltuion = getClosestIdByXor(bufferChallnege, bufferPlot)
-    this.value.solution = bufferSoltuion.toString()
-    return this.value.solution
+    this._value.solution = bufferSoltuion.toString()
+    return this._value.solution
   }
 
   public isValidSolution(publicKey: string) {
     // check if the included block solution is the best for the last block
     const seed = crypto.getHash(publicKey)
-    const proof = crypto.createProofOfSpace(seed, this.value.pledge)
-    return this.value.solution === this.getBestSolution(proof.plot)
+    const proof = crypto.createProofOfSpace(seed, this._value.pledge)
+    return this._value.solution === this.getBestSolution(proof.plot)
   }
 
-  public getTimeDelay(seed: string = this.value.solution ) {
+  public getTimeDelay(seed: string = this._value.solution ) {
     // computes the time delay for my solution, later a real VDF
    return crypto.createProofOfTime(seed)
   }
 
   public async sign(privateKeyObject: any) {
     // signs the block
-    this.value.signature = await crypto.sign(JSON.stringify(this.value), privateKeyObject)
+    this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject)
   }
 
   public async isValidSignature() {
-    const unsignedBlock = { ...this.value} 
+    const unsignedBlock = { ...this._value} 
     unsignedBlock.signature = null
-    return await crypto.isValidSignature(unsignedBlock, this.value.signature, this.value.publicKey)
+    return await crypto.isValidSignature(unsignedBlock, this._value.signature, this._value.publicKey)
   }
+
+  // private methods
+
+ 
+
+
 }
 
 export class Tx {
