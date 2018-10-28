@@ -21,34 +21,6 @@ export interface IBlock {
   txSet: Set<string>    // set of tx in the block
 }
 
-export interface ITx {
-  type: string
-  sender: string      // full public key of sender
-  receiver: string    // address of receiver
-  amount: number      // simple ledger to start
-  cost: number        // tx cost = immutable storage cost + miner fee
-  signature: string   // sender signature, authorizing the transfer
-
-  // optional reward tx data
-  previousBlock?: string
-  
-  // optional pledge tx data
-  pledgeProof?: string
-  spacePledged?: number
-  pledgeInterval?: number
-
-  // optional contract tx data
-  spaceReserved?: number
-  ttl?: number
-  replicationFactor?: number
-  contractKey?: string
-  contractSignature?: string
-  recordIndex?: Set<string>
-
-  // nexus tx data
-  pledgeTx?: string   // host pledge tx id 
-}
-
 export interface IPledge {
   host: string
   size: number

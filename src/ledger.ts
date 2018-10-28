@@ -727,38 +727,14 @@ export class Ledger {
 
   public createRewardTx(receiver: string, immutableCost: number, previousBlock: string) {
     // creates a reward tx for any farmer instance and calculates the fee
-
-    const txData: ITx = {
-      type: 'reward',
-      sender: null,
-      receiver: receiver,
-      previousBlock,
-      amount: 100,
-      cost: null,
-      signature: null
-    }
-
-    const tx = new Tx(txData)
-    tx.setCost(immutableCost, 1)
-    return tx
+   return Tx.createRewardTx(receiver, previousBlock, immutableCost)
   }
 
   public async createCreditTx(sender: string, receiver: string, amount: number) {
     // creates a credit tx instance and calculates the fee
     const profile = this.wallet.getProfile()
 
-    const txData: ITx = {
-      type: 'credit',
-      sender,
-      receiver,
-      amount,
-      cost: null,
-      signature: null
-    }
-
-    const tx = new Tx(txData)
-    tx.setCost(this.clearedImmutableCost)
-    await tx.sign(profile.privateKeyObject)
+    const tx = await Tx.createCreditTx(sender, receiver, amount, this.clearedImmutableCost, profile.privateKeyObject)
 
     // check to make sure you have the funds available
     if (tx.value.cost > this.getBalance(sender)) {
@@ -775,24 +751,7 @@ export class Ledger {
   public async createPledgeTx(sender: string, pledge: any, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
     // creates a pledge tx instance and calculates the fee
     const profile = this.wallet.getProfile()
-
-    const txData: ITx = {
-      type: 'pledge',
-      sender: NEXUS_ADDRESS,
-      receiver: NEXUS_ADDRESS,
-      amount: 0,
-      cost: null,
-      pledgeProof: pledge.proof,
-      spacePledged: pledge.size,
-      pledgeInterval: interval,
-      signature: null
-    }
-
-    const tx = new Tx(txData)
-    tx.setCost(immutableCost)
-    await tx.sign(profile.privateKeyObject)
-
-    // create the record, add to the mempool, apply to balances
+    const tx = await Tx.createPledgeTx(pledge, interval, immutableCost, profile.privateKeyObject)
     const txRecord = await Record.createImmutable(tx.value, false)
     this.validTxs.set(txRecord.key, txRecord.value)
     this.applyTx(tx, txRecord)
@@ -801,46 +760,18 @@ export class Ledger {
 
   public async createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number) {
     // creates a nexus to host payment tx instance and calculates the fee
-
-    const txData: ITx = {
-      type: 'nexus',
-      sender,
-      receiver: NEXUS_ADDRESS,
-      amount,
-      cost: null,
-      pledgeTx,
-      signature: null
-    }
-
-    const tx = new Tx(txData)
-    tx.setCost(immutableCost)
-    return tx
+    return Tx.createNexusTx(sender, amount, pledgeTx, immutableCost)
   }
 
   public async createImmutableContractTx(sender: string, immutableCost: number, senderBalance: number, spaceReserved: number, records: Set <string>, privateKeyObject: any, multiplier: number = TX_FEE_MULTIPLIER) {
     // reserve a fixed amount of immutable storage on SSDB with known records
 
     const cost = spaceReserved * immutableCost
-
-    const txData: ITx = {
-      type: 'contract',
-      sender,
-      receiver: NEXUS_ADDRESS,
-      amount: cost,
-      cost: null,
-      ttl: null,
-      replicationFactor: null,
-      recordIndex: records,
-      signature: null
-    }
-
-    const tx = new Tx(txData)
-    tx.setCost(immutableCost, multiplier)
-    await tx.sign(privateKeyObject)
+    const tx = await Tx.createImmutableContractTx(sender, cost, records, immutableCost, multiplier, privateKeyObject)
   
     // check to make sure you have the funds available 
     if (tx.value.cost > senderBalance) {
-      throw new Error('insufficient funds for tx')
+      throw new Error('Insufficient funds for tx')
     }
 
     return tx
@@ -852,26 +783,8 @@ export class Ledger {
     
     const cost = mutableCost * contract.spaceReserved * contract.replicationFactor * contract.ttl
 
-    const txData: ITx = {
-      type: 'contract',
-      sender,
-      receiver: NEXUS_ADDRESS,
-      amount: cost,
-      cost: null,
-      ttl: contract.ttl,
-      replicationFactor: contract.replicationFactor,
-      contractKey: contract.publicKey,
-      contractSignature: null,
-      signature: null
-    }
-
-    // sign with the private key of contract (not profile)
-    txData.contractSignature = await crypto.sign(JSON.stringify(txData), contract.privateKeyObject)
-
-    const tx = new Tx(txData)
-    tx.setCost(immutableCost)
-    await tx.sign(privateKeyObject)
-
+    const tx = await Tx.createMutableContractTx(sender, cost, contract, immutableCost, privateKeyObject)
+    
     // check to make sure you have the funds available 
     if (tx.value.cost > balance) {
       throw new Error('insufficient funds for tx')
@@ -1008,10 +921,159 @@ export class Block {
 }
 
 export class Tx {
-  value: ITx
-  constructor(txData?: ITx) {
-    this.value = txData
+  _value: {
+    type: string
+    sender: string
+    receiver: string
+    amount: number
+    cost: number
+    signature: string
+    previousBlock?: string
+    pledgeProof?: string
+    spacePledged?: number
+    pledgeInterval?: number
+    pledgeTx?: string
+    spaceReserved?: number
+    ttl?: number
+    replicationFactor?: number
+    recordIndex?: Set<string>
+    contractKey?: string
+    contractSig?: string
   }
+  
+  constructor(value: Tx['value']) {}
+
+  // getters
+
+  get value() {
+    return this._value
+  }
+
+  // static methods
+
+  static createRewardTx(receiver: string, previousBlock: string, immutableCost: number) {
+    // create and return new reward tx for farmer who solved the block challenge
+
+    const value: Tx['value'] = {
+      type: 'reward',
+      sender: null,
+      receiver: receiver,
+      previousBlock,
+      amount: 100,
+      cost: null,
+      signature: null
+    }
+
+    const tx = new Tx(value)
+    tx.setCost(immutableCost, 1)
+    return tx
+  }
+
+  static async createCreditTx(sender: string, receiver: string, amount: number, immutableCost: number, privateKeyObject: any) {
+    // create and return a new credit tx, sends credits between two addresses
+
+    const value: Tx['value'] = {
+      type: 'credit',
+      sender,
+      receiver,
+      amount,
+      cost: null,
+      signature: null
+    }
+
+    const tx = new Tx(value)
+    tx.setCost(immutableCost)
+    await tx.sign(privateKeyObject)
+    return tx
+  }
+
+  static async createPledgeTx(pledge: any, interval: number, immutableCost: number, privateKeyObject: any) {
+    // create a new host pledge tx
+
+    const value: Tx['value'] = {
+      type: 'pledge',
+      sender: NEXUS_ADDRESS,
+      receiver: NEXUS_ADDRESS,
+      amount: 0,
+      cost: null,
+      pledgeProof: pledge.proof,
+      spacePledged: pledge.size,
+      pledgeInterval: interval,
+      signature: null
+    }
+
+    const tx = new Tx(value)
+    tx.setCost(immutableCost)
+    await tx.sign(privateKeyObject)
+    return tx
+  }
+
+  static createNexusTx(sender: string, amount: number, pledgeTx: string, immutableCost: number) {
+    // create a
+
+    const value: Tx['value'] = {
+      type: 'nexus',
+      sender,
+      receiver: NEXUS_ADDRESS,
+      amount,
+      cost: null,
+      pledgeTx,
+      signature: null
+    }
+
+    const tx = new Tx(value)
+    tx.setCost(immutableCost)
+    return tx
+  }
+
+  static async createImmutableContractTx(sender: string, cost: number, records: Set<string>, immutableCost: number, multiplier: number, privateKeyObject: any) {
+    // create a new contract tx to store immutable data
+
+    const value: Tx['value'] = {
+      type: 'contract',
+      sender,
+      receiver: NEXUS_ADDRESS,
+      amount: cost,
+      cost: null,
+      ttl: null,
+      replicationFactor: null,
+      recordIndex: records,
+      signature: null
+    }
+
+    const tx = new Tx(value)
+    tx.setCost(immutableCost, multiplier)
+    await tx.sign(privateKeyObject)
+    return tx
+  }
+
+  static async createMutableContractTx(sender: string, cost: number, contract: any, immutableCost: number, privateKeyObject: any) {
+
+    const value: Tx['value'] = {
+      type: 'contract',
+      sender,
+      receiver: NEXUS_ADDRESS,
+      amount: cost,
+      cost: null,
+      ttl: contract.ttl,
+      replicationFactor: contract.replicationFactor,
+      contractKey: contract.publicKey,
+      contractSig: null,
+      signature: null
+    }
+
+    // sign with the private key of contract (not profile)
+    value.contractSig = await crypto.sign(JSON.stringify(value), contract.privateKeyObject)
+
+    const tx = new Tx(value)
+    tx.setCost(immutableCost)
+    await tx.sign(privateKeyObject)
+    return tx
+  }
+
+  // public methods
+
+  
   
   public async isValid(size: number, immutableCost: number, mutableCost?: number, senderBalance?: number, hostCount?: number) {
     let response = {
@@ -1126,9 +1188,9 @@ export class Tx {
 
       // validate contract signature 
       const txData = { ...this.value }
-      txData.contractSignature = null
+      txData.contractSig = null
 
-      if (!(await crypto.isValidSignature(txData, this.value.contractSignature, this.value.contractKey))) {
+      if (!(await crypto.isValidSignature(txData, this.value.contractSig, this.value.contractKey))) {
         response.reason = 'invalid contract tx, incorrect contract signature'
         return response
       }
@@ -1197,10 +1259,6 @@ export class Tx {
     return response
   }
 
-  public setCost(immutableCost: number, multiplier = TX_FEE_MULTIPLIER) {
-    this.value.cost = this.getCost(immutableCost, multiplier)
-  }
-
   public getCost(immutableCost: number, incentiveMultiplier: number) {
     // we have to carefully extrapolate the size since fee is based on size
     // we know the base record size and that each integer for amount and fee is one byte
@@ -1218,7 +1276,7 @@ export class Tx {
         baseSize = BASE_PLEDGE_TX_RECORD_SIZE + this.value.spacePledged.toString().length + this.value.pledgeInterval.toString().length + this.value.pledgeProof.toString().length
         break
       case('contract'):
-        baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this.value.spaceReserved.toString().length + this.value.ttl.toString().length + this.value.replicationFactor.toString().length + this.value.contractKey.toString().length + this.value.contractSignature.toString().length
+        baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this.value.spaceReserved.toString().length + this.value.ttl.toString().length + this.value.replicationFactor.toString().length + this.value.contractKey.toString().length + this.value.contractSig.toString().length
         break
       case('nexus'):
         // 64 bytes is size of string encoded SHA256
@@ -1248,15 +1306,22 @@ export class Tx {
     return finalfee
   }
 
-  public async sign(privateKeyObject: any) {
-    this.value.signature = await crypto.sign(JSON.stringify(this.value), privateKeyObject)
-  }
-
   public async isValidSignature() {
     const unsignedTx = { ...this.value} 
     unsignedTx.signature = null
     return await crypto.isValidSignature(unsignedTx, this.value.signature, this.value.sender)
-  }    
+  } 
+
+  // private methods
+
+  private setCost(immutableCost: number, multiplier = TX_FEE_MULTIPLIER) {
+    this.value.cost = this.getCost(immutableCost, multiplier)
+  }
+
+  private async sign(privateKeyObject: any) {
+    this.value.signature = await crypto.sign(JSON.stringify(this.value), privateKeyObject)
+  }
+    
 }
 
 // Block 0
