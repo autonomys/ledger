@@ -7,7 +7,7 @@
 }
 
 export interface IContract {
-  publicKey: string
+  contractSig: string
   clientKey: string
   spaceReserved: number
   replicationFactor: number

@@ -58,7 +58,7 @@ export declare class Ledger {
     createPledgeTx(sender: string, pledge: any, interval?: number, immutableCost?: number): Promise<Record>;
     createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number): Promise<Tx>;
     createImmutableContractTx(sender: string, immutableCost: number, senderBalance: number, spaceReserved: number, records: Set<string>, privateKeyObject: any, multiplier?: number): Promise<Tx>;
-    createMutableContractTx(sender: string, contract: any, mutableCost: number, immutableCost: number, balance: number, privateKeyObject: any): Promise<Tx>;
+    createMutableContractTx(spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string): Promise<Record>;
 }
 export declare class Block {
     _value: {
@@ -130,7 +130,6 @@ export declare class Tx {
         ttl?: number;
         replicationFactor?: number;
         recordIndex?: Set<string>;
-        contractKey?: string;
         contractSig?: string;
     };
     constructor(value: Tx['value']);
@@ -150,7 +149,6 @@ export declare class Tx {
         ttl?: number;
         replicationFactor?: number;
         recordIndex?: Set<string>;
-        contractKey?: string;
         contractSig?: string;
     };
     static createRewardTx(receiver: string, previousBlock: string, immutableCost: number): Tx;
@@ -158,7 +156,7 @@ export declare class Tx {
     static createPledgeTx(pledge: any, interval: number, immutableCost: number, privateKeyObject: any): Promise<Tx>;
     static createNexusTx(sender: string, amount: number, pledgeTx: string, immutableCost: number): Tx;
     static createImmutableContractTx(sender: string, cost: number, records: Set<string>, immutableCost: number, multiplier: number, privateKeyObject: any): Promise<Tx>;
-    static createMutableContractTx(sender: string, cost: number, contract: any, immutableCost: number, privateKeyObject: any): Promise<Tx>;
+    static createMutableContractTx(sender: string, cost: number, spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string, immutableCost: number, privateKeyObject: any): Promise<Tx>;
     isValid(size: number, immutableCost: number, mutableCost?: number, senderBalance?: number, hostCount?: number): Promise<{
         valid: boolean;
         reason: string;

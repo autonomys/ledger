@@ -301,7 +301,7 @@ class Ledger {
                 // have to ensure the farmer does not apply a tx fee to the block storage payment 
                 // add the contract to contracts
                 this.pendingContracts.set(record.key, {
-                    publicKey: tx.value.contractKey,
+                    contractSig: tx.value.contractSig,
                     clientKey: tx.value.sender,
                     spaceReserved: tx.value.spaceReserved,
                     replicationFactor: tx.value.replicationFactor,
@@ -651,16 +651,22 @@ class Ledger {
         }
         return tx;
     }
-    async createMutableContractTx(sender, contract, mutableCost, immutableCost, balance, privateKeyObject) {
+    async createMutableContractTx(spaceReserved, replicationFactor, ttl, contractSig) {
         // reserve space on SSDB with a mutable storage contract
         // have to create or pass in the keys
-        const cost = mutableCost * contract.spaceReserved * contract.replicationFactor * contract.ttl;
-        const tx = await Tx.createMutableContractTx(sender, cost, contract, immutableCost, privateKeyObject);
+        const profile = this.wallet.getProfile();
+        const cost = this.clearedMutableCost * spaceReserved * replicationFactor * ttl;
+        const tx = await Tx.createMutableContractTx(profile.publicKey, spaceReserved, replicationFactor, ttl, cost, contractSig, this.clearedImmutableCost, profile.privateKeyObject);
         // check to make sure you have the funds available 
-        if (tx.value.cost > balance) {
+        if (tx.value.cost > this.pendingBalances.get(crypto_1.default.getHash(profile.publicKey))) {
             throw new Error('insufficient funds for tx');
         }
-        return tx;
+        // return the record 
+        const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
+        await txRecord.unpack(profile.privateKeyObject);
+        this.validTxs.set(txRecord.key, txRecord.value);
+        this.applyTx(tx, txRecord);
+        return txRecord;
     }
 }
 exports.Ledger = Ledger;
@@ -881,21 +887,19 @@ class Tx {
         await tx.sign(privateKeyObject);
         return tx;
     }
-    static async createMutableContractTx(sender, cost, contract, immutableCost, privateKeyObject) {
+    static async createMutableContractTx(sender, cost, spaceReserved, replicationFactor, ttl, contractSig, immutableCost, privateKeyObject) {
         const value = {
             type: 'contract',
             sender,
             receiver: NEXUS_ADDRESS,
             amount: cost,
             cost: null,
-            ttl: contract.ttl,
-            replicationFactor: contract.replicationFactor,
-            contractKey: contract.publicKey,
-            contractSig: null,
+            spaceReserved,
+            ttl,
+            replicationFactor,
+            contractSig,
             signature: null
         };
-        // sign with the private key of contract (not profile)
-        value.contractSig = await crypto_1.default.sign(JSON.stringify(value), contract.privateKeyObject);
         const tx = new Tx(value);
         tx.setCost(immutableCost);
         await tx.sign(privateKeyObject);
@@ -993,12 +997,12 @@ class Tx {
                 return response;
             }
             // validate contract signature 
-            const txData = Object.assign({}, this._value);
-            txData.contractSig = null;
-            if (!(await crypto_1.default.isValidSignature(txData, this._value.contractSig, this._value.contractKey))) {
-                response.reason = 'invalid contract tx, incorrect contract signature';
-                return response;
-            }
+            // const txData = { ...this._value }
+            // txData.contractSig = null
+            // if (!(await crypto.isValidSignature(txData, this._value.contractSig, this._value.contractKey))) {
+            //   response.reason = 'invalid contract tx, incorrect contract signature'
+            //   return response
+            // }
             // should only be able to make one mutable contract per block, later
         }
         else { // immutable storage contract
@@ -1065,7 +1069,7 @@ class Tx {
                 baseSize = BASE_PLEDGE_TX_RECORD_SIZE + this._value.spacePledged.toString().length + this._value.pledgeInterval.toString().length + this._value.pledgeProof.toString().length;
                 break;
             case ('contract'):
-                baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this._value.spaceReserved.toString().length + this._value.ttl.toString().length + this._value.replicationFactor.toString().length + this._value.contractKey.toString().length + this._value.contractSig.toString().length;
+                baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this._value.spaceReserved.toString().length + this._value.ttl.toString().length + this._value.replicationFactor.toString().length + this._value.contractSig.toString().length;
                 break;
             case ('nexus'):
                 // 64 bytes is size of string encoded SHA256
