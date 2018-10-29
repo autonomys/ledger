@@ -1,6 +1,8 @@
+/// <reference types="node" />
 import { IPledge, IContract } from './interfaces';
 import { Record, IValue } from '@subspace/database';
-export declare class Ledger {
+import { EventEmitter } from 'events';
+export declare class Ledger extends EventEmitter {
     storage: any;
     wallet: any;
     chain: string[];
@@ -162,8 +164,6 @@ export declare class Tx {
         reason: string;
     }>;
     isValidPledgeTx(response: any): any;
-    isValidImmutableContractTxx(response: any): Promise<void>;
-    isValidMutableContractTx(response: any): Promise<void>;
     isValidContractTx(response: any, hostCount: number, mutableCost: number, immutableCost: number): Promise<any>;
     isValidNexusTx(response: any): any;
     isValidRewardTx(response: any): any;

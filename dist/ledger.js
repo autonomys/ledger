@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const crypto_1 = __importDefault(require("@subspace/crypto"));
 const utils_1 = require("@subspace/utils");
 const database_1 = require("@subspace/database");
+const events_1 = require("events");
 // Design Notes
 // all ledger tx are immutable SSDB records
 // each block has a unqiue immutable storage contract 
@@ -45,8 +46,9 @@ const BASE_REWARD_TX_RECORD_SIZE = 402;
 const NEXUS_ADDRESS = crypto_1.default.getHash('nexus');
 const FARMER_ADDRESS = crypto_1.default.getHash('farmer');
 const TX_FEE_MULTIPLIER = 1.02;
-class Ledger {
+class Ledger extends events_1.EventEmitter {
     constructor(storage, wallet) {
+        super();
         this.storage = storage;
         this.wallet = wallet;
         this.chain = [];
@@ -500,7 +502,8 @@ class Ledger {
         // called from self after interval expires
         // this is the best block for this round
         // apply the block to UTXO and reset everything for the next round
-        // create a reward tx for this block and add to valid tx's    
+        // create a reward tx for this block and add to valid tx's 
+        this.emit('block-solution', block);
         const profile = this.wallet.getProfile();
         const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
@@ -973,8 +976,6 @@ class Tx {
         response.valid = true;
         return response;
     }
-    async isValidImmutableContractTxx(response) { }
-    async isValidMutableContractTx(response) { }
     async isValidContractTx(response, hostCount, mutableCost, immutableCost) {
         if (this._value.ttl) { // mutable storage contract
             // validate TTL within range

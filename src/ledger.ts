@@ -2,6 +2,7 @@ import {IPledge, IContract} from './interfaces'
 import crypto from '@subspace/crypto'
 import { getClosestIdByXor } from '@subspace/utils'
 import { Record, IValue } from '@subspace/database'
+import { EventEmitter } from 'events'
 
 // Design Notes
 
@@ -47,7 +48,7 @@ const NEXUS_ADDRESS = crypto.getHash('nexus')
 const FARMER_ADDRESS = crypto.getHash('farmer')
 const TX_FEE_MULTIPLIER = 1.02
 
-export class Ledger {
+export class Ledger extends EventEmitter {
   chain: string[] = []
   validBlocks: string[] = []
   pendingBlocks: Map <string, IValue> = new Map()
@@ -92,6 +93,7 @@ export class Ledger {
     public storage: any,
     public wallet: any,
   ) {
+    super()
     this.pendingBalances.set(NEXUS_ADDRESS, 10000)
     this.pendingBalances.set(FARMER_ADDRESS, 0)
   }
@@ -606,7 +608,8 @@ export class Ledger {
     // this is the best block for this round
     // apply the block to UTXO and reset everything for the next round
 
-    // create a reward tx for this block and add to valid tx's    
+    // create a reward tx for this block and add to valid tx's 
+    this.emit('block-solution', block)   
     const profile = this.wallet.getProfile()
     const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
@@ -1215,10 +1218,6 @@ export class Tx {
     response.valid = true
     return response
   }
-
-  async isValidImmutableContractTxx(response: any) {}
-
-  async isValidMutableContractTx(response: any) {}
 
   public async isValidContractTx(response: any, hostCount: number, mutableCost: number, immutableCost: number) {
     if (this._value.ttl) {  // mutable storage contract
