@@ -301,8 +301,8 @@ class Ledger {
                 // have to ensure the farmer does not apply a tx fee to the block storage payment 
                 // add the contract to contracts
                 this.pendingContracts.set(record.key, {
+                    id: record.key,
                     contractSig: tx.value.contractSig,
-                    clientKey: tx.value.sender,
                     spaceReserved: tx.value.spaceReserved,
                     replicationFactor: tx.value.replicationFactor,
                     ttl: tx.value.ttl,
