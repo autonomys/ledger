@@ -126,6 +126,28 @@ export class Ledger extends EventEmitter {
     return mutableCost * multiplier
   }    
 
+  public async computeHostPayment(uptime: number, spacePledged: number, interval: number, pledgeTxId: string) {
+    // calculate the nexus payment for a host 
+    let sum: number = 0, spaceRatio: number, mutablePayment: number, immutablePayment: number
+    let blockId = this.getLastBlockId()
+    
+    // work backwards from payment block to funding block
+    while (blockId !== pledgeTxId) {
+      const blockValue = JSON.parse( await this.storage.get(blockId))
+      const blockRecord = Record.readPacked(blockId, blockValue)
+      blockRecord.unpack(null)      
+      spaceRatio = spacePledged / blockRecord.value.content.spacePledged
+      mutablePayment = spaceRatio * blockRecord.value.content.mutableCost
+      immutablePayment = spaceRatio * blockRecord.value.content.immutableCost
+      sum += mutablePayment + immutablePayment
+      blockId = blockRecord.value.content.previousBlock
+    }
+
+    const timeRatio = uptime / interval
+    const payment = timeRatio * sum
+    return payment
+  }
+
   private isBestBlockSolution(solution: string) {
     // check to see if a given solution is the best solution for the curernt challenge
     const challenge = this.chain[this.chain.length - 1]
@@ -797,7 +819,13 @@ export class Ledger extends EventEmitter {
 
   public async createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number) {
     // creates a nexus to host payment tx instance and calculates the fee
-    return Tx.createNexusTx(sender, amount, pledgeTx, immutableCost)
+    const profile = this.wallet.getProfile()
+    const tx = Tx.createNexusTx(sender, amount, pledgeTx, immutableCost)
+    const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
+    await txRecord.unpack(profile.privateKeyObject)
+    this.validTxs.set(txRecord.key, txRecord.value)
+    this.applyTx(tx, txRecord)
+    return txRecord
   }
 
   public async createImmutableContractTx(sender: string, immutableCost: number, senderBalance: number, spaceReserved: number, records: Set <string>, privateKeyObject: any, multiplier: number = TX_FEE_MULTIPLIER) {
@@ -1199,7 +1227,9 @@ export class Tx {
   }
 
   static createNexusTx(sender: string, amount: number, pledgeTx: string, immutableCost: number) {
-    // create a
+    // create a host payment request tx
+
+    // needs to be signed by the host so it may not be submitted on their behalf
 
     const value: Tx['value'] = {
       type: 'nexus',

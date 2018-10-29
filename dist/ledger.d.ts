@@ -41,6 +41,7 @@ export declare class Ledger extends EventEmitter {
     static getImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number): number;
     computeMutableCost(creditSupply: number, spaceAvailable: number): number;
     computeImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number): number;
+    computeHostPayment(uptime: number, spacePledged: number, interval: number, pledgeTxId: string): Promise<number>;
     private isBestBlockSolution;
     getBalance(address: string): number;
     getHeight(): number;
@@ -61,7 +62,7 @@ export declare class Ledger extends EventEmitter {
     createRewardTx(receiver: string, immutableCost: number, previousBlock: string): Tx;
     createCreditTx(sender: string, receiver: string, amount: number): Promise<Record>;
     createPledgeTx(sender: string, pledge: any, interval?: number, immutableCost?: number): Promise<Record>;
-    createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number): Promise<Tx>;
+    createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number): Promise<Record>;
     createImmutableContractTx(sender: string, immutableCost: number, senderBalance: number, spaceReserved: number, records: Set<string>, privateKeyObject: any, multiplier?: number): Promise<Tx>;
     createMutableContractTx(spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string): Promise<Record>;
 }

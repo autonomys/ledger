@@ -94,6 +94,25 @@ class Ledger extends events_1.EventEmitter {
         }
         return mutableCost * multiplier;
     }
+    async computeHostPayment(uptime, spacePledged, interval, pledgeTxId) {
+        // calculate the nexus payment for a host 
+        let sum = 0, spaceRatio, mutablePayment, immutablePayment;
+        let blockId = this.getLastBlockId();
+        // work backwards from payment block to funding block
+        while (blockId !== pledgeTxId) {
+            const blockValue = JSON.parse(await this.storage.get(blockId));
+            const blockRecord = database_1.Record.readPacked(blockId, blockValue);
+            blockRecord.unpack(null);
+            spaceRatio = spacePledged / blockRecord.value.content.spacePledged;
+            mutablePayment = spaceRatio * blockRecord.value.content.mutableCost;
+            immutablePayment = spaceRatio * blockRecord.value.content.immutableCost;
+            sum += mutablePayment + immutablePayment;
+            blockId = blockRecord.value.content.previousBlock;
+        }
+        const timeRatio = uptime / interval;
+        const payment = timeRatio * sum;
+        return payment;
+    }
     isBestBlockSolution(solution) {
         // check to see if a given solution is the best solution for the curernt challenge
         const challenge = this.chain[this.chain.length - 1];
@@ -663,7 +682,13 @@ class Ledger extends events_1.EventEmitter {
     }
     async createNexusTx(sender, pledgeTx, amount, immutableCost) {
         // creates a nexus to host payment tx instance and calculates the fee
-        return Tx.createNexusTx(sender, amount, pledgeTx, immutableCost);
+        const profile = this.wallet.getProfile();
+        const tx = Tx.createNexusTx(sender, amount, pledgeTx, immutableCost);
+        const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
+        await txRecord.unpack(profile.privateKeyObject);
+        this.validTxs.set(txRecord.key, txRecord.value);
+        this.applyTx(tx, txRecord);
+        return txRecord;
     }
     async createImmutableContractTx(sender, immutableCost, senderBalance, spaceReserved, records, privateKeyObject, multiplier = TX_FEE_MULTIPLIER) {
         // reserve a fixed amount of immutable storage on SSDB with known records
@@ -951,7 +976,8 @@ class Tx {
         return tx;
     }
     static createNexusTx(sender, amount, pledgeTx, immutableCost) {
-        // create a
+        // create a host payment request tx
+        // needs to be signed by the host so it may not be submitted on their behalf
         const value = {
             type: 'nexus',
             sender,
