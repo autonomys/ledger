@@ -32,7 +32,7 @@ export declare class Ledger {
     pendingCreditSupply: number;
     pendingMutableCost: number;
     pendingImmutableCost: number;
-    isFarming: false;
+    isFarming: boolean;
     constructor(storage: any, wallet: any);
     private computeMutableCost;
     private computeImmutableCost;

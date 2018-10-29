@@ -86,7 +86,7 @@ export class Ledger {
   pendingMutableCost: number 
   pendingImmutableCost: number 
 
-  isFarming: false
+  isFarming = false
 
   constructor(
     public storage: any,

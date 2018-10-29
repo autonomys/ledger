@@ -64,6 +64,7 @@ class Ledger {
         this.pendingBalances = new Map();
         this.pendingPledges = new Map();
         this.pendingContracts = new Map();
+        this.isFarming = false;
         this.pendingBalances.set(NEXUS_ADDRESS, 10000);
         this.pendingBalances.set(FARMER_ADDRESS, 0);
     }
