@@ -724,7 +724,7 @@ export class Ledger extends EventEmitter {
     setTimeout( async () => {
       const blockId = this.validBlocks[0]
       const blockValue = this.pendingBlocks.get(blockId)
-      const blockRecord = new Record(blockId, blockValue)
+      const blockRecord = Record.readUnpacked(blockId, blockValue)
       await this.applyBlock(blockRecord)
 
       if (this.isFarming) {
