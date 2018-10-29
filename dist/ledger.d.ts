@@ -35,9 +35,12 @@ export declare class Ledger extends EventEmitter {
     pendingMutableCost: number;
     pendingImmutableCost: number;
     isFarming: boolean;
+    hasLedger: boolean;
     constructor(storage: any, wallet: any);
-    private computeMutableCost;
-    private computeImmutableCost;
+    static getMutableCost(creditSupply: number, spaceAvailable: number): number;
+    static getImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number): number;
+    computeMutableCost(creditSupply: number, spaceAvailable: number): number;
+    computeImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number): number;
     private isBestBlockSolution;
     getBalance(address: string): number;
     getHeight(): number;
@@ -54,7 +57,7 @@ export declare class Ledger extends EventEmitter {
         valid: boolean;
         reason: string;
     }>;
-    private applyBlock;
+    applyBlock(block: Record): Promise<void>;
     createRewardTx(receiver: string, immutableCost: number, previousBlock: string): Tx;
     createCreditTx(sender: string, receiver: string, amount: number): Promise<Record>;
     createPledgeTx(sender: string, pledge: any, interval?: number, immutableCost?: number): Promise<Record>;
@@ -102,6 +105,10 @@ export declare class Block {
     setMutableCost(cost: number): void;
     addRewardTx(rewardRecord: Record): void;
     addPledgeTx(pledgeRecord: Record): void;
+    isValidGenesisBlock(block: Record): Promise<{
+        valid: boolean;
+        reason: string;
+    }>;
     isValid(newBlock: Record, previousBlock: {
         key: string;
         value: Block['value'];

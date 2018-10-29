@@ -88,6 +88,7 @@ export class Ledger extends EventEmitter {
   pendingImmutableCost: number 
 
   isFarming = false
+  hasLedger = false
 
   constructor(
     public storage: any,
@@ -98,12 +99,22 @@ export class Ledger extends EventEmitter {
     this.pendingBalances.set(FARMER_ADDRESS, 0)
   }
 
-  private computeMutableCost(creditSupply: number, spaceAvailable: number) {
+  public static getMutableCost(creditSupply: number, spaceAvailable: number) {
+    const ledger = new Ledger(null, null)
+    return ledger.computeMutableCost(creditSupply, spaceAvailable)
+  }
+
+  public static getImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number) {
+    const ledger = new Ledger(null, null)
+    return ledger.computeImmutableCost(mutableCost, mutableReserved, immutableReserved)
+  }
+
+  public computeMutableCost(creditSupply: number, spaceAvailable: number) {
     // cost in credits for one byte of storage per ms 
     return creditSupply / (spaceAvailable * MIN_PLEDGE_INTERVAL)
   }
 
-  private computeImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number) {
+  public computeImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number) {
     // the product of the cost of mutable storage and the ratio between immutable and mutable space reserved
     let multiplier = 1
     if (mutableReserved) {
@@ -141,7 +152,9 @@ export class Ledger extends EventEmitter {
   }
 
   public getLastBlockId() {
-    return this.chain[this.chain.length - 1]
+    if (this.chain.length) {
+      return this.chain[this.chain.length - 1]
+    } 
   }
 
   public async bootstrap(spacePledged = MIN_PLEDGE_SIZE, pledgeInterval = MIN_PLEDGE_INTERVAL) {
@@ -186,11 +199,13 @@ export class Ledger extends EventEmitter {
     block.addPledgeTx(pledgeRecord)
 
     // create the block, sign and convert to a record
-   
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
     await blockRecord.unpack(profile.privateKeyObject)
-    this.applyBlock(blockRecord)
+
+    // apply and emit the block 
+    this.emit('block-solution', blockRecord)
+    await this.applyBlock(blockRecord)
   }
 
   private computeSolution() {
@@ -202,9 +217,13 @@ export class Ledger extends EventEmitter {
 
     
     // set a timer to wait for time delay to checking if soltuion is best
-    setTimeout(() => {
+    setTimeout( async () => {
       if (this.isBestBlockSolution(solution)) {
-        this.createBlock()
+        const block = await this.createBlock()
+        this.validBlocks.unshift(block.key)
+        this.pendingBlocks.set(block.key, block.value)
+        this.emit('block-solution', block)
+        // if still best solution when block interval expires, it will be applied
       }
     }, time)
   }
@@ -212,6 +231,9 @@ export class Ledger extends EventEmitter {
   private async createBlock() {
      // called from compute solution after my time delay expires or on bootstrap
      // since we are using pending stats, there cannot be any async code between stats assignment and creating the tx set, else they could get out of sync if a new tx is added during assignment
+
+    // contract tx will be added from last block
+    // reward tx is created on apply block if this is most valid block 
 
     const profile = this.wallet.getProfile()
     const blockData: Block['value'] = {
@@ -250,11 +272,10 @@ export class Ledger extends EventEmitter {
 
     // get best solution, sign and convert to a record
     block.getBestSolution(this.wallet.profile.proof.plot)
-    block.getTimeDelay()
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
     await blockRecord.unpack(profile.privateKeyObject)
-    return blockRecord
+    return blockRecord  
 
     // should not be able to add any tx's created after my proof of time expires
     // should add validation to ensure nobody else is doing this 
@@ -496,7 +517,7 @@ export class Ledger extends EventEmitter {
     // wait until the block interval expires before applying the block
 
     // is this a new block?
-    if (this.validBlocks.includes(record.key) || this.invalidBlocks.includes(record.key)) {
+    if (this.validBlocks.includes(record.key) || this.invalidBlocks.includes(record.key) || this.chain.includes(record.key)) {
       return {
         valid: false,
         reason: 'already have block'
@@ -504,7 +525,7 @@ export class Ledger extends EventEmitter {
     }
 
     const block = new Block(record.value.content)
-
+  
     // fetch the last block header to compare
     const previousBlockKey = this.chain[this.chain.length - 1]
     const previousBlockRecordValue = this.clearedBlocks.get(previousBlockKey)
@@ -527,6 +548,7 @@ export class Ledger extends EventEmitter {
     let hostCount = previousBlock.value.hostCount
     let creditSupply = previousBlock.value.creditSupply
 
+    // create the reward tx 
     const profile = this.wallet.getProfile()
     const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
@@ -602,15 +624,20 @@ export class Ledger extends EventEmitter {
     return blockTest
   }
 
-  private async applyBlock(block: Record) {
+  public async applyBlock(block: Record) {
     // called from bootstrap after block is ready
     // called from self after interval expires
     // this is the best block for this round
     // apply the block to UTXO and reset everything for the next round
 
     // create a reward tx for this block and add to valid tx's 
-    this.emit('block-solution', block)   
+
+  
     const profile = this.wallet.getProfile()
+
+    // have to handle reward for genesis block (no immutable cost at that point)
+
+    // create the reward tx for this block and add to mempool
     const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
@@ -624,7 +651,7 @@ export class Ledger extends EventEmitter {
     // add the block to my chain 
     this.chain.push(block.key)
 
-    // flush the block an tx mempool 
+    // flush the block and tx mempool 
     this.validBlocks = []
     this.invalidBlocks = []
     this.pendingBlocks.clear
@@ -720,16 +747,16 @@ export class Ledger extends EventEmitter {
       }
     }
 
+    if (this.isFarming) {
+      this.computeSolution()
+    }
+
     // set a new interval to wait before applying the next most valid block
     setTimeout( async () => {
       const blockId = this.validBlocks[0]
       const blockValue = this.pendingBlocks.get(blockId)
       const blockRecord = Record.readUnpacked(blockId, blockValue)
       await this.applyBlock(blockRecord)
-
-      if (this.isFarming) {
-        this.computeSolution()
-      }
     }, BLOCK_IN_MS)    
   }
 
@@ -868,6 +895,96 @@ export class Block {
   public addPledgeTx(pledgeRecord: Record) {
     this._value.spacePledged += pledgeRecord.value.content.spacePledged
     this._value.txSet.add(pledgeRecord.key)
+  }
+
+  public async isValidGenesisBlock(block: Record) {
+    let response = {
+      valid: false,
+      reason: <string> null
+    }
+
+    // does it have height 0 
+    if (this._value.height !== 0) {
+      response.reason = 'invalid genesis block, wrong block height'
+      return response
+    }
+
+    // is the record size under 1 MB
+    if (block.getSize() > 1000000) {
+      response.reason = 'invalid genesis block, block is larger than one megabyte'
+      return response
+    }
+
+    // does it have null solution 
+    if (this._value.solution) {
+      response.reason = 'invalid genesis block, should not have a solution'
+      return response
+    }
+
+    // has space been pledged
+    if (!this._value.spacePledged) {
+      response.reason = 'invalid genesis block, no space has been pledged'
+      return response
+    }
+
+    // has space been reserved
+    if (this._value.immutableReserved || this._value.mutableReserved) {
+      response.reason = 'invalid genesis block, should not have any space reserved'
+      return response
+    }
+
+    // is credit supply right
+    if (this._value.creditSupply !== 100) {
+      response.reason = 'invalid genesis block, wrong initial credit supply'
+      return response
+    }
+
+    // is host count right
+    if (this._value.hostCount !== 1) {
+      response.reason = 'invalid genesis block, wrong initial host count'
+      return response
+    }
+
+    // are there two txs
+    if (this._value.txSet.size !== 2) {
+      response.reason = 'invalid genesis block, can only have two tx'
+      return response
+    }
+
+    // does pledge equals spacePledged
+    if (this._value.spacePledged !== this._value.pledge) {
+      response.reason = 'invalid genesis block, pledge is not equal to space pledged'
+      return response
+    }
+
+    // correct mutable cost
+    const mutableCost = Ledger.getMutableCost(this._value.creditSupply, this._value.spacePledged)
+    if (this._value.mutableCost !== mutableCost) {
+      response.reason = 'invalid genesis block, invalid mutable cost of storage'
+      return response
+    }
+    
+    // correct immutable cost
+    const immutableCost = Ledger.getImmutableCost(this._value.mutableCost, this._value.mutableReserved, this._value.immutableReserved)
+    if (this._value.immutableCost !== immutableCost) {
+      response.reason = 'invalid genesis block, invalid immutable cost of storage'
+      return response
+    }
+
+
+    // does it have a valid reward tx 
+
+    // does it have a valid pledge tx 
+
+
+    // is the signature valid 
+    if (! await this.isValidSignature()) {
+      response.reason = 'invalid genesis block, invalid block signature'
+      return response
+    }
+
+    response.valid = true
+    return response
   }
 
   public async isValid(newBlock: Record, previousBlock: {key: string, value: Block['value']}) {
