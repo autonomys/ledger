@@ -428,6 +428,7 @@ export class Ledger extends EventEmitter {
           record.key, {
             id: record.key,
             contractSig: tx.value.contractSig,
+            contractId: tx.value.contractId,
             spaceReserved: tx.value.spaceReserved,
             replicationFactor: tx.value.replicationFactor,
             ttl: tx.value.ttl,
@@ -842,7 +843,7 @@ export class Ledger extends EventEmitter {
     return tx
   }
 
-  public async createMutableContractTx(spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string) {
+  public async createMutableContractTx(spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string, contractId: string) {
     // reserve space on SSDB with a mutable storage contract
     // have to create or pass in the keys
 
@@ -850,7 +851,7 @@ export class Ledger extends EventEmitter {
     
     const cost = this.clearedMutableCost * spaceReserved * replicationFactor * ttl
 
-    const tx = await Tx.createMutableContractTx(profile.publicKey, spaceReserved, replicationFactor, ttl, cost, contractSig, this.clearedImmutableCost, profile.privateKeyObject)
+    const tx = await Tx.createMutableContractTx(profile.publicKey, spaceReserved, replicationFactor, ttl, cost, contractSig, contractId, this.clearedImmutableCost, profile.privateKeyObject)
 
     // check to make sure you have the funds available 
     if (tx.value.cost > this.pendingBalances.get(crypto.getHash(profile.publicKey))) {
@@ -1157,6 +1158,7 @@ export class Tx {
     replicationFactor?: number
     recordIndex?: Set<string>
     contractSig?: string
+    contractId?: string
   }
   
   constructor(value: Tx['value']) {}
@@ -1267,7 +1269,7 @@ export class Tx {
     return tx
   }
 
-  static async createMutableContractTx(sender: string, cost: number, spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string, immutableCost: number, privateKeyObject: any) {
+  static async createMutableContractTx(sender: string, cost: number, spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string, contractId: string, immutableCost: number, privateKeyObject: any) {
 
     const value: Tx['value'] = {
       type: 'contract',
@@ -1279,6 +1281,7 @@ export class Tx {
       ttl,
       replicationFactor,
       contractSig,
+      contractId,
       signature: null
     }
 

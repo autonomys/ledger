@@ -343,6 +343,7 @@ class Ledger extends events_1.EventEmitter {
                 this.pendingContracts.set(record.key, {
                     id: record.key,
                     contractSig: tx.value.contractSig,
+                    contractId: tx.value.contractId,
                     spaceReserved: tx.value.spaceReserved,
                     replicationFactor: tx.value.replicationFactor,
                     ttl: tx.value.ttl,
@@ -700,12 +701,12 @@ class Ledger extends events_1.EventEmitter {
         }
         return tx;
     }
-    async createMutableContractTx(spaceReserved, replicationFactor, ttl, contractSig) {
+    async createMutableContractTx(spaceReserved, replicationFactor, ttl, contractSig, contractId) {
         // reserve space on SSDB with a mutable storage contract
         // have to create or pass in the keys
         const profile = this.wallet.getProfile();
         const cost = this.clearedMutableCost * spaceReserved * replicationFactor * ttl;
-        const tx = await Tx.createMutableContractTx(profile.publicKey, spaceReserved, replicationFactor, ttl, cost, contractSig, this.clearedImmutableCost, profile.privateKeyObject);
+        const tx = await Tx.createMutableContractTx(profile.publicKey, spaceReserved, replicationFactor, ttl, cost, contractSig, contractId, this.clearedImmutableCost, profile.privateKeyObject);
         // check to make sure you have the funds available 
         if (tx.value.cost > this.pendingBalances.get(crypto_1.default.getHash(profile.publicKey))) {
             throw new Error('insufficient funds for tx');
@@ -1009,7 +1010,7 @@ class Tx {
         await tx.sign(privateKeyObject);
         return tx;
     }
-    static async createMutableContractTx(sender, cost, spaceReserved, replicationFactor, ttl, contractSig, immutableCost, privateKeyObject) {
+    static async createMutableContractTx(sender, cost, spaceReserved, replicationFactor, ttl, contractSig, contractId, immutableCost, privateKeyObject) {
         const value = {
             type: 'contract',
             sender,
@@ -1020,6 +1021,7 @@ class Tx {
             ttl,
             replicationFactor,
             contractSig,
+            contractId,
             signature: null
         };
         const tx = new Tx(value);

@@ -12,4 +12,5 @@ export interface IContract {
     replicationFactor: number;
     ttl: number;
     contractSig: string;
+    contractId: string;
 }
