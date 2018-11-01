@@ -717,7 +717,7 @@ export class Ledger extends EventEmitter {
 
       // get cost of storage to sum cost of storage contract and farmer fees
       recordIds.add(txId)
-      await txRecord.pack(profile.privateKeyObject)
+      
       const recordSize = txRecord.getSize()
       const recordStorageCost = recordSize * oldImmutableCost
       blockSpaceReserved += recordSize
@@ -728,6 +728,7 @@ export class Ledger extends EventEmitter {
 
       // apply the tx to stats and pending balances, save, and delete from memPool
       this.applyTx(tx, txRecord)
+      await txRecord.pack(profile.privateKeyObject)
       this.storage.put(txId, JSON.stringify(txRecord.value))
       this.validTxs.delete(txId)
     }
