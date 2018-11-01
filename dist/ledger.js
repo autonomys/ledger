@@ -1,9 +1,13 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const crypto_1 = __importDefault(require("@subspace/crypto"));
+const crypto = __importStar(require("@subspace/crypto"));
 const utils_1 = require("@subspace/utils");
 const database_1 = require("@subspace/database");
 const events_1 = require("events");
@@ -43,8 +47,8 @@ const BASE_PLEDGE_TX_RECORD_SIZE = 741;
 const BASE_CONTRACT_TX_RECORD_SIZE = 2281;
 const BASE_NEXUS_TX_RECORD_SIZE = 409;
 const BASE_REWARD_TX_RECORD_SIZE = 402;
-const NEXUS_ADDRESS = crypto_1.default.getHash('nexus');
-const FARMER_ADDRESS = crypto_1.default.getHash('farmer');
+const NEXUS_ADDRESS = crypto.getHash('nexus');
+const FARMER_ADDRESS = crypto.getHash('farmer');
 const TX_FEE_MULTIPLIER = 1.02;
 class Ledger extends events_1.EventEmitter {
     constructor(storage, wallet) {
@@ -255,7 +259,7 @@ class Ledger extends events_1.EventEmitter {
         }
         // validate the tx
         const tx = new Tx(record.value.content);
-        const senderBalance = this.getBalance(crypto_1.default.getHash(tx.value.sender));
+        const senderBalance = this.getBalance(crypto.getHash(tx.value.sender));
         const txTest = await tx.isValid(record.getSize(), this.clearedMutableCost, this.clearedImmutableCost, senderBalance, this.clearedHostCount);
         // ensure extra reward tx are not being created
         if (tx.value.type === 'reward') {
@@ -298,7 +302,7 @@ class Ledger extends events_1.EventEmitter {
                 txStorageCost = tx.getCost(this.clearedImmutableCost, 1);
                 txFee = tx.value.cost - txStorageCost;
                 // debit the sender
-                const senderAddress = crypto_1.default.getHash(tx.value.sender);
+                const senderAddress = crypto.getHash(tx.value.sender);
                 let senderBalance = this.pendingBalances.get(senderAddress);
                 senderBalance -= tx.value.amount + tx.value.cost;
                 this.pendingBalances.set(senderAddress, senderBalance);
@@ -365,7 +369,7 @@ class Ledger extends events_1.EventEmitter {
                 nexusBalance += tx.value.amount + txStorageCost;
                 this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance);
                 // debit reserver
-                const reserverAddress = crypto_1.default.getHash(tx.value.sender);
+                const reserverAddress = crypto.getHash(tx.value.sender);
                 let reserverBalance = this.pendingBalances.get(reserverAddress);
                 reserverBalance -= tx.value.amount;
                 this.pendingBalances.set(reserverAddress, reserverBalance);
@@ -607,8 +611,8 @@ class Ledger extends events_1.EventEmitter {
             this.validTxs.delete(txId);
         }
         // add storage fees to farmer balance 
-        const farmerBalance = this.pendingBalances.get(crypto_1.default.getHash(block.value.publicKey));
-        this.pendingBalances.set(crypto_1.default.getHash(block.value.publicKey), farmerBalance + blockStorageFees);
+        const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.publicKey));
+        this.pendingBalances.set(crypto.getHash(block.value.publicKey), farmerBalance + blockStorageFees);
         // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
         const contractTx = await this.createImmutableContractTx(NEXUS_ADDRESS, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject);
         const contractRecord = await database_1.Record.createImmutable(contractTx.value, false, profile.publicKey, false);
@@ -631,7 +635,7 @@ class Ledger extends events_1.EventEmitter {
         for (const [key, value] of this.validTxs) {
             const pendingTxRecord = new database_1.Record(key, value);
             const pendingTx = new Tx(value.content);
-            const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(crypto_1.default.getHash(pendingTx.value.sender)), this.clearedHostCount);
+            const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(crypto.getHash(pendingTx.value.sender)), this.clearedHostCount);
             if (testTx.valid) {
                 this.applyTx(pendingTx, pendingTxRecord);
             }
@@ -708,7 +712,7 @@ class Ledger extends events_1.EventEmitter {
         const cost = this.clearedMutableCost * spaceReserved * replicationFactor * ttl;
         const tx = await Tx.createMutableContractTx(profile.publicKey, spaceReserved, replicationFactor, ttl, cost, contractSig, contractId, this.clearedImmutableCost, profile.privateKeyObject);
         // check to make sure you have the funds available 
-        if (tx.value.cost > this.pendingBalances.get(crypto_1.default.getHash(profile.publicKey))) {
+        if (tx.value.cost > this.pendingBalances.get(crypto.getHash(profile.publicKey))) {
             throw new Error('insufficient funds for tx');
         }
         // return the record 
@@ -902,22 +906,22 @@ class Block {
     }
     isValidSolution(publicKey) {
         // check if the included block solution is the best for the last block
-        const seed = crypto_1.default.getHash(publicKey);
-        const proof = crypto_1.default.createProofOfSpace(seed, this._value.pledge);
+        const seed = crypto.getHash(publicKey);
+        const proof = crypto.createProofOfSpace(seed, this._value.pledge);
         return this._value.solution === this.getBestSolution(proof.plot);
     }
     getTimeDelay(seed = this._value.solution) {
         // computes the time delay for my solution, later a real VDF
-        return crypto_1.default.createProofOfTime(seed);
+        return crypto.createProofOfTime(seed);
     }
     async sign(privateKeyObject) {
         // signs the block
-        this._value.signature = await crypto_1.default.sign(JSON.stringify(this._value), privateKeyObject);
+        this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject);
     }
     async isValidSignature() {
         const unsignedBlock = Object.assign({}, this._value);
         unsignedBlock.signature = null;
-        return await crypto_1.default.isValidSignature(unsignedBlock, this._value.signature, this._value.publicKey);
+        return await crypto.isValidSignature(unsignedBlock, this._value.signature, this._value.publicKey);
     }
 }
 exports.Block = Block;
@@ -1078,7 +1082,7 @@ class Tx {
     }
     isValidPledgeTx(response) {
         // validate pledge (proof of space)
-        if (!crypto_1.default.isValidProofOfSpace(this._value.sender, this.value.spacePledged, this._value.pledgeProof)) {
+        if (!crypto.isValidProofOfSpace(this._value.sender, this.value.spacePledged, this._value.pledgeProof)) {
             response.reason = 'invalid pledge tx, incorrect proof of space';
             return response;
         }
@@ -1221,14 +1225,14 @@ class Tx {
     async isValidSignature() {
         const unsignedTx = Object.assign({}, this._value);
         unsignedTx.signature = null;
-        return await crypto_1.default.isValidSignature(unsignedTx, this._value.signature, this._value.sender);
+        return await crypto.isValidSignature(unsignedTx, this._value.signature, this._value.sender);
     }
     // private methods
     setCost(immutableCost, multiplier = TX_FEE_MULTIPLIER) {
         this._value.cost = this.getCost(immutableCost, multiplier);
     }
     async sign(privateKeyObject) {
-        this._value.signature = await crypto_1.default.sign(JSON.stringify(this._value), privateKeyObject);
+        this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject);
     }
 }
 exports.Tx = Tx;

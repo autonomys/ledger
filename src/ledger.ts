@@ -1,5 +1,5 @@
 import {IPledge, IContract} from './interfaces'
-import crypto from '@subspace/crypto'
+import * as crypto from '@subspace/crypto'
 import { getClosestIdByXor } from '@subspace/utils'
 import { Record, IValue } from '@subspace/database'
 import { EventEmitter } from 'events'
