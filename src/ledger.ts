@@ -217,7 +217,7 @@ export class Ledger extends EventEmitter {
     block.addRewardTx(rewardRecord)
 
     // create the pledge tx and record, add to tx set
-    const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.plot, pledgeInterval, blockData.immutableCost)
+    const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.id, spacePledged, pledgeInterval, blockData.immutableCost)
     block.addPledgeTx(pledgeRecord)
 
     // create the block, sign and convert to a record
@@ -807,10 +807,10 @@ export class Ledger extends EventEmitter {
     return txRecord
   }
 
-  public async createPledgeTx(sender: string, pledge: any, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
+  public async createPledgeTx(sender: string, proof: string, spacePledged: number, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
     // creates a pledge tx instance and calculates the fee
     const profile = this.wallet.getProfile()
-    const tx = await Tx.createPledgeTx(pledge, interval, immutableCost, profile.privateKeyObject)
+    const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject)
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, txRecord.value)
@@ -1211,7 +1211,7 @@ export class Tx {
     return tx
   }
 
-  static async createPledgeTx(pledge: any, interval: number, immutableCost: number, privateKeyObject: any) {
+  static async createPledgeTx(proof: string, spacePledged: number, interval: number, immutableCost: number, privateKeyObject: any) {
     // create a new host pledge tx
 
     const value: Tx['value'] = {
@@ -1220,8 +1220,8 @@ export class Tx {
       receiver: NEXUS_ADDRESS,
       amount: 0,
       cost: null,
-      pledgeProof: pledge.proof,
-      spacePledged: pledge.size,
+      pledgeProof: proof,
+      spacePledged: spacePledged,
       pledgeInterval: interval,
       signature: null
     }

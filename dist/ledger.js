@@ -176,7 +176,7 @@ class Ledger extends events_1.EventEmitter {
         await rewardRecord.unpack(profile.privatKeyObject);
         block.addRewardTx(rewardRecord);
         // create the pledge tx and record, add to tx set
-        const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.plot, pledgeInterval, blockData.immutableCost);
+        const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.id, spacePledged, pledgeInterval, blockData.immutableCost);
         block.addPledgeTx(pledgeRecord);
         // create the block, sign and convert to a record
         await block.sign(profile.privateKeyObject);
@@ -675,10 +675,10 @@ class Ledger extends events_1.EventEmitter {
         this.applyTx(tx, txRecord);
         return txRecord;
     }
-    async createPledgeTx(sender, pledge, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
+    async createPledgeTx(sender, proof, spacePledged, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
         // creates a pledge tx instance and calculates the fee
         const profile = this.wallet.getProfile();
-        const tx = await Tx.createPledgeTx(pledge, interval, immutableCost, profile.privateKeyObject);
+        const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject);
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(txRecord.key, txRecord.value);
@@ -966,7 +966,7 @@ class Tx {
         await tx.sign(privateKeyObject);
         return tx;
     }
-    static async createPledgeTx(pledge, interval, immutableCost, privateKeyObject) {
+    static async createPledgeTx(proof, spacePledged, interval, immutableCost, privateKeyObject) {
         // create a new host pledge tx
         const value = {
             type: 'pledge',
@@ -974,8 +974,8 @@ class Tx {
             receiver: NEXUS_ADDRESS,
             amount: 0,
             cost: null,
-            pledgeProof: pledge.proof,
-            spacePledged: pledge.size,
+            pledgeProof: proof,
+            spacePledged: spacePledged,
             pledgeInterval: interval,
             signature: null
         };
