@@ -886,7 +886,7 @@ export class Block {
     signature: string     // farmer signature
   }
 
-  constructor(value: Block['value']) {}
+  constructor(_value: Block['value']) {}
 
 
   // getters

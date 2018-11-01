@@ -725,7 +725,7 @@ class Ledger extends events_1.EventEmitter {
 }
 exports.Ledger = Ledger;
 class Block {
-    constructor(value) { }
+    constructor(_value) { }
     // getters
     get value() {
         return this._value;

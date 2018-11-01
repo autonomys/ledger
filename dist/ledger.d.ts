@@ -83,7 +83,7 @@ export declare class Block {
         publicKey: string;
         signature: string;
     };
-    constructor(value: Block['value']);
+    constructor(_value: Block['value']);
     readonly value: {
         height: number;
         previousBlock: string;
