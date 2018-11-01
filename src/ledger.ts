@@ -869,7 +869,7 @@ export class Ledger extends EventEmitter {
 }
  
 export class Block {
-  _value: {
+   _value: {
     height: number            
     previousBlock: string 
     spacePledged: number 
@@ -886,7 +886,9 @@ export class Block {
     signature: string     // farmer signature
   }
 
-  constructor(_value: Block['value']) {}
+  constructor(_value: Block['value']) {
+    this._value = _value
+  }
 
 
   // getters
@@ -1161,7 +1163,9 @@ export class Tx {
     contractId?: string
   }
   
-  constructor(value: Tx['value']) {}
+  constructor(value: Tx['value']) {
+    this._value = value
+  }
 
   // getters
 
