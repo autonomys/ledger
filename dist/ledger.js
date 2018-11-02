@@ -180,7 +180,8 @@ class Ledger extends events_1.EventEmitter {
         block.setMutableCost(this.computeMutableCost(100, blockData.pledge));
         block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved));
         // create the reward tx and record, add to tx set
-        const rewardTx = this.createRewardTx(profile.publicKey, blockData.immutableCost, blockData.previousBlock);
+        const receiver = crypto.getHash(profile.publicKey);
+        const rewardTx = this.createRewardTx(receiver, blockData.immutableCost, blockData.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privatKeyObject);
         block.addRewardTx(rewardRecord);
@@ -382,7 +383,7 @@ class Ledger extends events_1.EventEmitter {
                 const reserverAddress = crypto.getHash(tx.value.sender);
                 let reserverBalance = this.pendingBalances.get(reserverAddress);
                 reserverBalance -= tx.value.amount;
-                this.pendingBalances.set(reserverAddress, reserverBalance);
+                this.pendingBalances.set(crypto.getHash(reserverAddress), reserverBalance);
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
                 farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
                 farmerBalance += txFee;
@@ -560,7 +561,8 @@ class Ledger extends events_1.EventEmitter {
         const profile = this.wallet.getProfile();
         // have to handle reward for genesis block (no immutable cost at that point)
         // create the reward tx for this block and add to mempool
-        const rewardTx = this.createRewardTx(block.value.content.publicKey, block.value.content.immutableCost, block.value.content.previousBlock);
+        const receiver = crypto.getHash(block.value.content.publicKey);
+        const rewardTx = this.createRewardTx(receiver, block.value.content.immutableCost, block.value.content.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(rewardRecord.key, Object.assign({}, rewardRecord.value));
