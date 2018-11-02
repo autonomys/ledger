@@ -197,7 +197,7 @@ class Ledger extends events_1.EventEmitter {
             if (this.isBestBlockSolution(solution)) {
                 const block = await this.createBlock();
                 this.validBlocks.unshift(block.key);
-                this.pendingBlocks.set(block.key, block.value);
+                this.pendingBlocks.set(block.key, Object.assign({}, block.value));
                 this.emit('block-solution', block);
                 // if still best solution when block interval expires, it will be applied
             }
@@ -274,7 +274,7 @@ class Ledger extends events_1.EventEmitter {
             return txTest;
         }
         this.applyTx(tx, record);
-        this.validTxs.set(record.key, record.value);
+        this.validTxs.set(record.key, Object.assign({}, record.value));
         txTest.valid = true;
         return txTest;
     }
@@ -454,7 +454,7 @@ class Ledger extends events_1.EventEmitter {
         const previousBlockRecordValue = this.clearedBlocks.get(previousBlockKey);
         const previousBlock = {
             key: previousBlockKey,
-            value: previousBlockRecordValue.content
+            value: Object.assign({}, previousBlockRecordValue.content)
         };
         // is the block valid?
         const blockTest = await block.isValid(record, previousBlock);
@@ -495,7 +495,7 @@ class Ledger extends events_1.EventEmitter {
                 }
             }
             const recordValue = this.validTxs.get(txId);
-            const tx = recordValue.content;
+            const tx = Object.assign({}, recordValue.content);
             if (tx.type === 'pledge') {
                 // if pledge, modify spaceAvailable, add to host count 
                 spacePledged += tx.spacePledged;
@@ -532,7 +532,7 @@ class Ledger extends events_1.EventEmitter {
         // is it the best solution proposed?
         if (this.isBestBlockSolution(block.value.solution)) {
             this.validBlocks.unshift(record.key);
-            this.pendingBlocks.set(record.key, record.value);
+            this.pendingBlocks.set(record.key, Object.assign({}, record.value));
         }
         else {
             this.validBlocks.push(record.key);
@@ -552,11 +552,11 @@ class Ledger extends events_1.EventEmitter {
         const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(rewardRecord.key, rewardRecord.value);
+        this.validTxs.set(rewardRecord.key, Object.assign({}, rewardRecord.value));
         // save the block and add to cleared blocks, flush the pending blocks 
         await rewardRecord.pack(profile.publicKey);
         await this.storage.put(block.key, JSON.stringify(block.value));
-        this.clearedBlocks.set(block.key, block.value);
+        this.clearedBlocks.set(block.key, Object.assign({}, block.value));
         // add the block to my chain 
         this.chain.push(block.key);
         // flush the block and tx mempool 
@@ -593,8 +593,8 @@ class Ledger extends events_1.EventEmitter {
         for (const txId of block.value.content.txSet) {
             // get the tx value and record
             const txRecordValue = this.validTxs.get(txId);
-            const txRecord = new database_1.Record(txId, txRecordValue);
-            const tx = new Tx(txRecordValue.content);
+            const txRecord = new database_1.Record(txId, Object.assign({}, txRecordValue));
+            const tx = new Tx(Object.assign({}, txRecordValue.content));
             // get cost of storage to sum cost of storage contract and farmer fees
             recordIds.add(txId);
             const recordSize = txRecord.getSize();
@@ -617,7 +617,7 @@ class Ledger extends events_1.EventEmitter {
         const contractTx = await this.createImmutableContractTx(NEXUS_ADDRESS, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject);
         const contractRecord = await database_1.Record.createImmutable(contractTx.value, false, profile.publicKey, false);
         await contractRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(contractRecord.key, contractRecord.value);
+        this.validTxs.set(contractRecord.key, Object.assign({}, contractRecord.value));
         // reset cleared balances back to pending (fast-forward cleared utxo to this block)
         this.clearedSpacePledged = this.pendingSpacePledged;
         this.clearedMutableReserved = this.pendingMutableReserved;
@@ -652,7 +652,7 @@ class Ledger extends events_1.EventEmitter {
         setTimeout(async () => {
             const blockId = this.validBlocks[0];
             const blockValue = this.pendingBlocks.get(blockId);
-            const blockRecord = database_1.Record.readUnpacked(blockId, blockValue);
+            const blockRecord = database_1.Record.readUnpacked(blockId, Object.assign({}, blockValue));
             await this.applyBlock(blockRecord);
         }, BLOCK_IN_MS);
     }
@@ -671,7 +671,7 @@ class Ledger extends events_1.EventEmitter {
         // create the record, add to the mempool, apply to balances
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(txRecord.key, txRecord.value);
+        this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
         this.applyTx(tx, txRecord);
         return txRecord;
     }
@@ -681,7 +681,7 @@ class Ledger extends events_1.EventEmitter {
         const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject);
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(txRecord.key, txRecord.value);
+        this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
         this.applyTx(tx, txRecord);
         return txRecord;
     }
@@ -691,7 +691,7 @@ class Ledger extends events_1.EventEmitter {
         const tx = Tx.createNexusTx(sender, amount, pledgeTx, immutableCost);
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(txRecord.key, txRecord.value);
+        this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
         this.applyTx(tx, txRecord);
         return txRecord;
     }
@@ -718,7 +718,7 @@ class Ledger extends events_1.EventEmitter {
         // return the record 
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(txRecord.key, txRecord.value);
+        this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
         this.applyTx(tx, txRecord);
         return txRecord;
     }

@@ -243,7 +243,7 @@ export class Ledger extends EventEmitter {
       if (this.isBestBlockSolution(solution)) {
         const block = await this.createBlock()
         this.validBlocks.unshift(block.key)
-        this.pendingBlocks.set(block.key, block.value)
+        this.pendingBlocks.set(block.key, {...block.value})
         this.emit('block-solution', block)
         // if still best solution when block interval expires, it will be applied
       }
@@ -338,7 +338,7 @@ export class Ledger extends EventEmitter {
 
     this.applyTx(tx, record)
     
-    this.validTxs.set(record.key, record.value)
+    this.validTxs.set(record.key, {...record.value})
 
     txTest.valid = true
     return txTest
@@ -554,7 +554,7 @@ export class Ledger extends EventEmitter {
     const previousBlockRecordValue = this.clearedBlocks.get(previousBlockKey)
     const previousBlock = {
       key: previousBlockKey,
-      value: previousBlockRecordValue.content
+      value: {...previousBlockRecordValue.content}
     }
 
     // is the block valid?
@@ -599,7 +599,7 @@ export class Ledger extends EventEmitter {
       }
 
       const recordValue = this.validTxs.get(txId)
-      const tx = recordValue.content
+      const tx = {...recordValue.content}
       if (tx.type === 'pledge') {  
         // if pledge, modify spaceAvailable, add to host count 
         spacePledged += tx.spacePledged
@@ -638,7 +638,7 @@ export class Ledger extends EventEmitter {
     // is it the best solution proposed?
     if (this.isBestBlockSolution(block.value.solution)) {
       this.validBlocks.unshift(record.key)
-      this.pendingBlocks.set(record.key, record.value)
+      this.pendingBlocks.set(record.key, {...record.value})
     } else {
       this.validBlocks.push(record.key)
     }
@@ -664,12 +664,12 @@ export class Ledger extends EventEmitter {
     const rewardTx = this.createRewardTx(block.value.content.publicKey, this.clearedImmutableCost, block.value.content.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(rewardRecord.key, rewardRecord.value)
+    this.validTxs.set(rewardRecord.key, {...rewardRecord.value})
 
     // save the block and add to cleared blocks, flush the pending blocks 
     await rewardRecord.pack(profile.publicKey)
     await this.storage.put(block.key, JSON.stringify(block.value))
-    this.clearedBlocks.set(block.key, block.value)
+    this.clearedBlocks.set(block.key, {...block.value})
     
     // add the block to my chain 
     this.chain.push(block.key)
@@ -712,8 +712,8 @@ export class Ledger extends EventEmitter {
     for (const txId of block.value.content.txSet) {
       // get the tx value and record
       const txRecordValue = this.validTxs.get(txId)
-      const txRecord = new Record(txId, txRecordValue)
-      const tx = new Tx(txRecordValue.content)
+      const txRecord = new Record(txId, {...txRecordValue})
+      const tx = new Tx({...txRecordValue.content})
 
       // get cost of storage to sum cost of storage contract and farmer fees
       recordIds.add(txId)
@@ -741,7 +741,7 @@ export class Ledger extends EventEmitter {
     const contractTx = await this.createImmutableContractTx(NEXUS_ADDRESS, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
     const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
     await contractRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(contractRecord.key, contractRecord.value)
+    this.validTxs.set(contractRecord.key, {...contractRecord.value})
 
     // reset cleared balances back to pending (fast-forward cleared utxo to this block)
     this.clearedSpacePledged = this.pendingSpacePledged
@@ -779,7 +779,7 @@ export class Ledger extends EventEmitter {
     setTimeout( async () => {
       const blockId = this.validBlocks[0]
       const blockValue = this.pendingBlocks.get(blockId)
-      const blockRecord = Record.readUnpacked(blockId, blockValue)
+      const blockRecord = Record.readUnpacked(blockId, {...blockValue})
       await this.applyBlock(blockRecord)
     }, BLOCK_IN_MS)    
   }
@@ -803,7 +803,7 @@ export class Ledger extends EventEmitter {
     // create the record, add to the mempool, apply to balances
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, txRecord.value)
+    this.validTxs.set(txRecord.key, {...txRecord.value})
     this.applyTx(tx, txRecord)
     return txRecord
   }
@@ -814,7 +814,7 @@ export class Ledger extends EventEmitter {
     const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject)
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, txRecord.value)
+    this.validTxs.set(txRecord.key, {...txRecord.value})
     this.applyTx(tx, txRecord)
     return txRecord
   }
@@ -825,7 +825,7 @@ export class Ledger extends EventEmitter {
     const tx = Tx.createNexusTx(sender, amount, pledgeTx, immutableCost)
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, txRecord.value)
+    this.validTxs.set(txRecord.key, {...txRecord.value})
     this.applyTx(tx, txRecord)
     return txRecord
   }
@@ -863,7 +863,7 @@ export class Ledger extends EventEmitter {
 
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, txRecord.value)
+    this.validTxs.set(txRecord.key, {...txRecord.value})
     this.applyTx(tx, txRecord)
     return txRecord
   } 
