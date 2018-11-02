@@ -581,7 +581,7 @@ class Ledger extends events_1.EventEmitter {
         // flush the block and tx mempool 
         this.validBlocks = [];
         this.invalidBlocks = [];
-        this.pendingBlocks.clear;
+        this.pendingBlocks.clear();
         this.invalidTxs.clear();
         // save immutable cost for block tx cost calculations
         const oldImmutableCost = this.clearedImmutableReserved;
@@ -649,6 +649,8 @@ class Ledger extends events_1.EventEmitter {
         this.clearedBalances = this.pendingBalances;
         this.clearedContracts = this.pendingContracts;
         this.clearedPledges = this.pendingPledges;
+        this.pendingContracts.clear();
+        this.pendingPledges.clear();
         // apply each remaining valid tx in the memPool to pending (get pending back up to date on mepool)
         // have to ensure the tx fee is still valid with new cost of storage
         for (const [key, value] of this.validTxs) {

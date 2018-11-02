@@ -686,7 +686,7 @@ export class Ledger extends EventEmitter {
     // flush the block and tx mempool 
     this.validBlocks = []
     this.invalidBlocks = []
-    this.pendingBlocks.clear
+    this.pendingBlocks.clear()
     this.invalidTxs.clear()
 
     // save immutable cost for block tx cost calculations
@@ -746,7 +746,6 @@ export class Ledger extends EventEmitter {
     const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.content.publicKey))
     this.pendingBalances.set(crypto.getHash(block.value.content.publicKey), farmerBalance + blockStorageFees)
 
-
     // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
     const contractTx = await this.createImmutableContractTx(null, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
     const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
@@ -765,6 +764,9 @@ export class Ledger extends EventEmitter {
     this.clearedBalances = this.pendingBalances
     this.clearedContracts = this.pendingContracts
     this.clearedPledges = this.pendingPledges
+
+    this.pendingContracts.clear()
+    this.pendingPledges.clear()
     
     // apply each remaining valid tx in the memPool to pending (get pending back up to date on mepool)
     // have to ensure the tx fee is still valid with new cost of storage
