@@ -1013,6 +1013,7 @@ class Tx {
             spaceReserved,
             replicationFactor: 0,
             recordIndex: records,
+            contractSig: null,
             signature: null
         };
         const tx = new Tx(value);

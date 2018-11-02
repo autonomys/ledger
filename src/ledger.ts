@@ -1266,6 +1266,7 @@ export class Tx {
       spaceReserved,
       replicationFactor: 0,
       recordIndex: records,
+      contractSig: null,
       signature: null
     }
 
