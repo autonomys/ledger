@@ -95,8 +95,8 @@ export class Ledger extends EventEmitter {
     public wallet: any,
   ) {
     super()
-    this.pendingBalances.set(NEXUS_ADDRESS, 10000)
-    this.pendingBalances.set(FARMER_ADDRESS, 0)
+    this.clearedBalances.set(NEXUS_ADDRESS, 10000)
+    this.clearedBalances.set(FARMER_ADDRESS, 0)
   }
 
   public static getMutableCost(creditSupply: number, spaceAvailable: number) {
@@ -456,10 +456,16 @@ export class Ledger extends EventEmitter {
         this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance)
 
         // debit reserver
-        const reserverAddress = crypto.getHash(tx.value.sender)
+        let reserverAddress: string
+        if (tx.value.sender) {
+          reserverAddress = crypto.getHash(tx.value.sender)
+        } else {
+          reserverAddress = NEXUS_ADDRESS
+        }
+        
         let reserverBalance = this.pendingBalances.get(reserverAddress)
         reserverBalance -= tx.value.amount
-        this.pendingBalances.set(crypto.getHash(reserverAddress), reserverBalance)
+        this.pendingBalances.set(reserverAddress, reserverBalance)
 
         // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
         farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
@@ -741,7 +747,7 @@ export class Ledger extends EventEmitter {
     this.pendingBalances.set(crypto.getHash(block.value.content.publicKey), farmerBalance + blockStorageFees)
 
     // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
-    const contractTx = await this.createImmutableContractTx(NEXUS_ADDRESS, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
+    const contractTx = await this.createImmutableContractTx(null, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
     const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
     await contractRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(contractRecord.key, {...contractRecord.value})
