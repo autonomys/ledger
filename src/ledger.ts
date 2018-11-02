@@ -1266,7 +1266,7 @@ export class Tx {
       spaceReserved,
       replicationFactor: 0,
       recordIndex: records,
-      contractSig: null,
+      contractSig: '',
       signature: null
     }
 
@@ -1490,10 +1490,10 @@ export class Tx {
         baseSize = BASE_CREDIT_TX_RECORD_SIZE + this._value.amount.toString().length 
         break
       case('pledge'):
-        baseSize = BASE_PLEDGE_TX_RECORD_SIZE + this._value.spacePledged.toString().length + this._value.pledgeInterval.toString().length + this._value.pledgeProof.toString().length
+        baseSize = BASE_PLEDGE_TX_RECORD_SIZE + this._value.spacePledged.toString().length + this._value.pledgeInterval.toString().length + this._value.pledgeProof.length
         break
       case('contract'):
-        baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this._value.spaceReserved.toString().length + this._value.ttl.toString().length + this._value.replicationFactor.toString().length + this._value.contractSig.toString().length
+        baseSize = BASE_CONTRACT_TX_RECORD_SIZE + this._value.spaceReserved.toString().length + this._value.ttl.toString().length + this._value.replicationFactor.toString().length + this._value.contractSig.length
         break
       case('nexus'):
         // 64 bytes is size of string encoded SHA256
