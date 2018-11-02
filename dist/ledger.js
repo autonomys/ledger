@@ -433,6 +433,7 @@ class Ledger extends events_1.EventEmitter {
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
                 farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
                 farmerBalance += txFee;
+                break;
             default:
                 throw new Error('Unkown tx type');
         }
