@@ -167,7 +167,7 @@ export declare class Tx {
     static createCreditTx(sender: string, receiver: string, amount: number, immutableCost: number, privateKeyObject: any): Promise<Tx>;
     static createPledgeTx(proof: string, spacePledged: number, interval: number, immutableCost: number, privateKeyObject: any): Promise<Tx>;
     static createNexusTx(sender: string, amount: number, pledgeTx: string, immutableCost: number): Tx;
-    static createImmutableContractTx(sender: string, cost: number, records: Set<string>, immutableCost: number, multiplier: number, privateKeyObject: any): Promise<Tx>;
+    static createImmutableContractTx(sender: string, cost: number, spaceReserved: number, records: Set<string>, immutableCost: number, multiplier: number, privateKeyObject: any): Promise<Tx>;
     static createMutableContractTx(sender: string, cost: number, spaceReserved: number, replicationFactor: number, ttl: number, contractSig: string, contractId: string, immutableCost: number, privateKeyObject: any): Promise<Tx>;
     isValid(size: number, immutableCost: number, mutableCost?: number, senderBalance?: number, hostCount?: number): Promise<{
         valid: boolean;

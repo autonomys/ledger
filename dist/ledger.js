@@ -699,7 +699,7 @@ class Ledger extends events_1.EventEmitter {
     async createImmutableContractTx(sender, immutableCost, senderBalance, spaceReserved, records, privateKeyObject, multiplier = TX_FEE_MULTIPLIER) {
         // reserve a fixed amount of immutable storage on SSDB with known records
         const cost = spaceReserved * immutableCost;
-        const tx = await Tx.createImmutableContractTx(sender, cost, records, immutableCost, multiplier, privateKeyObject);
+        const tx = await Tx.createImmutableContractTx(sender, cost, spaceReserved, records, immutableCost, multiplier, privateKeyObject);
         // check to make sure you have the funds available 
         if (tx.value.cost > senderBalance) {
             throw new Error('Insufficient funds for tx');
@@ -1001,16 +1001,17 @@ class Tx {
         tx.setCost(immutableCost);
         return tx;
     }
-    static async createImmutableContractTx(sender, cost, records, immutableCost, multiplier, privateKeyObject) {
+    static async createImmutableContractTx(sender, cost, spaceReserved, records, immutableCost, multiplier, privateKeyObject) {
         // create a new contract tx to store immutable data
         const value = {
             type: 'contract',
             sender,
             receiver: NEXUS_ADDRESS,
             amount: cost,
-            cost: null,
-            ttl: null,
-            replicationFactor: null,
+            cost: 0,
+            ttl: 0,
+            spaceReserved,
+            replicationFactor: 0,
             recordIndex: records,
             signature: null
         };

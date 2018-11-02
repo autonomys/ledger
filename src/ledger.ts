@@ -834,7 +834,7 @@ export class Ledger extends EventEmitter {
     // reserve a fixed amount of immutable storage on SSDB with known records
 
     const cost = spaceReserved * immutableCost
-    const tx = await Tx.createImmutableContractTx(sender, cost, records, immutableCost, multiplier, privateKeyObject)
+    const tx = await Tx.createImmutableContractTx(sender, cost, spaceReserved, records, immutableCost, multiplier, privateKeyObject)
   
     // check to make sure you have the funds available 
     if (tx.value.cost > senderBalance) {
@@ -1253,7 +1253,7 @@ export class Tx {
     return tx
   }
 
-  static async createImmutableContractTx(sender: string, cost: number, records: Set<string>, immutableCost: number, multiplier: number, privateKeyObject: any) {
+  static async createImmutableContractTx(sender: string, cost: number, spaceReserved: number, records: Set<string>, immutableCost: number, multiplier: number, privateKeyObject: any) {
     // create a new contract tx to store immutable data
 
     const value: Tx['value'] = {
@@ -1261,9 +1261,10 @@ export class Tx {
       sender,
       receiver: NEXUS_ADDRESS,
       amount: cost,
-      cost: null,
-      ttl: null,
-      replicationFactor: null,
+      cost: 0,
+      ttl: 0,
+      spaceReserved,
+      replicationFactor: 0,
       recordIndex: records,
       signature: null
     }
