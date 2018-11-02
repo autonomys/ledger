@@ -605,7 +605,7 @@ class Ledger extends events_1.EventEmitter {
                 blockStorageFees += (tx.value.cost - recordStorageCost);
             }
             // apply the tx to stats and pending balances, save, and delete from memPool
-            this.applyTx(tx, txRecord);
+            await this.applyTx(tx, txRecord);
             await txRecord.pack(profile.privateKeyObject);
             this.storage.put(txId, JSON.stringify(txRecord.value));
             this.validTxs.delete(txId);
