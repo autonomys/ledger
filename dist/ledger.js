@@ -70,6 +70,15 @@ class Ledger extends events_1.EventEmitter {
         this.pendingBalances = new Map();
         this.pendingPledges = new Map();
         this.pendingContracts = new Map();
+        // stats as of the last block   
+        this.clearedSpacePledged = 0;
+        this.clearedMutableReserved = 0;
+        this.clearedImmutableReserved = 0;
+        this.clearedSpaceAvailable = 0;
+        this.clearedHostCount = 0;
+        this.clearedCreditSupply = 0;
+        this.clearedMutableCost = 0;
+        this.clearedImmutableCost = 0;
         this.isFarming = false;
         this.hasLedger = false;
         this.pendingBalances.set(NEXUS_ADDRESS, 10000);
@@ -168,7 +177,7 @@ class Ledger extends events_1.EventEmitter {
         };
         const block = new Block(blockData);
         // compute cost of mutable and immutable storage
-        block.setMutableCost(this.computeMutableCost(blockData.creditSupply, blockData.spacePledged));
+        block.setMutableCost(this.computeMutableCost(100, blockData.pledge));
         block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved));
         // create the reward tx and record, add to tx set
         const rewardTx = this.createRewardTx(profile.publicKey, blockData.immutableCost, blockData.previousBlock);
@@ -178,6 +187,7 @@ class Ledger extends events_1.EventEmitter {
         // create the pledge tx and record, add to tx set
         const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.id, spacePledged, pledgeInterval, blockData.immutableCost);
         block.addPledgeTx(pledgeRecord);
+        this.validTxs.set(pledgeRecord.key, Object.assign({}, pledgeRecord.value));
         // create the block, sign and convert to a record
         await block.sign(profile.privateKeyObject);
         const blockRecord = await database_1.Record.createImmutable(block.value, false, profile.publicKey);
@@ -644,6 +654,7 @@ class Ledger extends events_1.EventEmitter {
                 // drop the tx, client will have to create a new tx that covers tx fees
                 this.validTxs.delete(key);
                 this.invalidTxs.add(key);
+                throw new Error('Invalid tx');
             }
         }
         if (this.isFarming) {

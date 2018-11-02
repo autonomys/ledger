@@ -68,14 +68,14 @@ export class Ledger extends EventEmitter {
   pendingContracts: Map <string, IContract> = new Map()
 
   // stats as of the last block   
-  clearedSpacePledged: number 
-  clearedMutableReserved: number 
-  clearedImmutableReserved: number 
-  clearedSpaceAvailable: number
-  clearedHostCount: number
-  clearedCreditSupply: number 
-  clearedMutableCost: number 
-  clearedImmutableCost: number 
+  clearedSpacePledged: number = 0
+  clearedMutableReserved: number = 0
+  clearedImmutableReserved: number = 0
+  clearedSpaceAvailable: number = 0
+  clearedHostCount: number = 0
+  clearedCreditSupply: number = 0
+  clearedMutableCost: number = 0
+  clearedImmutableCost: number = 0
 
   // stats with all valid tx in mempool applied
   pendingSpacePledged: number 
@@ -207,7 +207,7 @@ export class Ledger extends EventEmitter {
     const block = new Block(blockData)
 
     // compute cost of mutable and immutable storage
-    block.setMutableCost(this.computeMutableCost(blockData.creditSupply, blockData.spacePledged))
+    block.setMutableCost(this.computeMutableCost(100, blockData.pledge))
     block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
 
     // create the reward tx and record, add to tx set
@@ -219,6 +219,7 @@ export class Ledger extends EventEmitter {
     // create the pledge tx and record, add to tx set
     const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.id, spacePledged, pledgeInterval, blockData.immutableCost)
     block.addPledgeTx(pledgeRecord)
+    this.validTxs.set(pledgeRecord.key, {...pledgeRecord.value})
 
     // create the block, sign and convert to a record
     await block.sign(profile.privateKeyObject)
@@ -768,6 +769,7 @@ export class Ledger extends EventEmitter {
         // drop the tx, client will have to create a new tx that covers tx fees
         this.validTxs.delete(key)
         this.invalidTxs.add(key)
+        throw new Error('Invalid tx')
       }
     }
 
