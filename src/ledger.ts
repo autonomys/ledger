@@ -746,6 +746,7 @@ export class Ledger extends EventEmitter {
     const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.content.publicKey))
     this.pendingBalances.set(crypto.getHash(block.value.content.publicKey), farmerBalance + blockStorageFees)
 
+
     // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
     const contractTx = await this.createImmutableContractTx(null, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
     const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
@@ -770,7 +771,13 @@ export class Ledger extends EventEmitter {
     for (const [key, value] of this.validTxs) {
       const pendingTxRecord = new Record(key, value)
       const pendingTx = new Tx(value.content)
-      const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(crypto.getHash(pendingTx.value.sender)), this.clearedHostCount )
+      let senderAddress: string
+            if (pendingTx.value.sender) {
+              senderAddress = crypto.getHash(pendingTx.value.sender)
+            } else {
+              senderAddress = NEXUS_ADDRESS
+            }
+      const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(senderAddress), this.clearedHostCount )
       if (testTx.valid) {
         await this.applyTx(pendingTx, pendingTxRecord)
       } else {

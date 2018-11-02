@@ -654,7 +654,14 @@ class Ledger extends events_1.EventEmitter {
         for (const [key, value] of this.validTxs) {
             const pendingTxRecord = new database_1.Record(key, value);
             const pendingTx = new Tx(value.content);
-            const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(crypto.getHash(pendingTx.value.sender)), this.clearedHostCount);
+            let senderAddress;
+            if (pendingTx.value.sender) {
+                senderAddress = crypto.getHash(pendingTx.value.sender);
+            }
+            else {
+                senderAddress = NEXUS_ADDRESS;
+            }
+            const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(senderAddress), this.clearedHostCount);
             if (testTx.valid) {
                 await this.applyTx(pendingTx, pendingTxRecord);
             }
