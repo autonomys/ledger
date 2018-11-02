@@ -273,7 +273,7 @@ class Ledger extends events_1.EventEmitter {
             this.invalidTxs.add(record.key);
             return txTest;
         }
-        this.applyTx(tx, record);
+        await this.applyTx(tx, record);
         this.validTxs.set(record.key, Object.assign({}, record.value));
         txTest.valid = true;
         return txTest;
@@ -637,7 +637,7 @@ class Ledger extends events_1.EventEmitter {
             const pendingTx = new Tx(value.content);
             const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(crypto.getHash(pendingTx.value.sender)), this.clearedHostCount);
             if (testTx.valid) {
-                this.applyTx(pendingTx, pendingTxRecord);
+                await this.applyTx(pendingTx, pendingTxRecord);
             }
             else {
                 // drop the tx, client will have to create a new tx that covers tx fees
@@ -672,7 +672,7 @@ class Ledger extends events_1.EventEmitter {
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
-        this.applyTx(tx, txRecord);
+        await this.applyTx(tx, txRecord);
         return txRecord;
     }
     async createPledgeTx(sender, proof, spacePledged, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
@@ -682,7 +682,7 @@ class Ledger extends events_1.EventEmitter {
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
-        this.applyTx(tx, txRecord);
+        await this.applyTx(tx, txRecord);
         return txRecord;
     }
     async createNexusTx(sender, pledgeTx, amount, immutableCost) {
@@ -692,7 +692,7 @@ class Ledger extends events_1.EventEmitter {
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
-        this.applyTx(tx, txRecord);
+        await this.applyTx(tx, txRecord);
         return txRecord;
     }
     async createImmutableContractTx(sender, immutableCost, senderBalance, spaceReserved, records, privateKeyObject, multiplier = TX_FEE_MULTIPLIER) {
@@ -719,7 +719,7 @@ class Ledger extends events_1.EventEmitter {
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
-        this.applyTx(tx, txRecord);
+        await this.applyTx(tx, txRecord);
         return txRecord;
     }
 }

@@ -336,7 +336,7 @@ export class Ledger extends EventEmitter {
       return txTest
     }
 
-    this.applyTx(tx, record)
+    await this.applyTx(tx, record)
     
     this.validTxs.set(record.key, {...record.value})
 
@@ -763,7 +763,7 @@ export class Ledger extends EventEmitter {
       const pendingTx = new Tx(value.content)
       const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(crypto.getHash(pendingTx.value.sender)), this.clearedHostCount )
       if (testTx.valid) {
-        this.applyTx(pendingTx, pendingTxRecord)
+        await this.applyTx(pendingTx, pendingTxRecord)
       } else {
         // drop the tx, client will have to create a new tx that covers tx fees
         this.validTxs.delete(key)
@@ -804,7 +804,7 @@ export class Ledger extends EventEmitter {
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, {...txRecord.value})
-    this.applyTx(tx, txRecord)
+    await this.applyTx(tx, txRecord)
     return txRecord
   }
 
@@ -815,7 +815,7 @@ export class Ledger extends EventEmitter {
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, {...txRecord.value})
-    this.applyTx(tx, txRecord)
+    await this.applyTx(tx, txRecord)
     return txRecord
   }
 
@@ -826,7 +826,7 @@ export class Ledger extends EventEmitter {
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, {...txRecord.value})
-    this.applyTx(tx, txRecord)
+    await this.applyTx(tx, txRecord)
     return txRecord
   }
 
@@ -864,7 +864,7 @@ export class Ledger extends EventEmitter {
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, {...txRecord.value})
-    this.applyTx(tx, txRecord)
+    await this.applyTx(tx, txRecord)
     return txRecord
   } 
 }
