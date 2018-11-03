@@ -584,7 +584,14 @@ class Ledger extends events_1.EventEmitter {
         this.pendingBlocks.clear();
         this.invalidTxs.clear();
         // save immutable cost for block tx cost calculations
-        const oldImmutableCost = this.clearedImmutableReserved;
+        let oldImmutableCost = 0;
+        if (block.value.content.previousBlock) {
+            oldImmutableCost = this.clearedImmutableCost;
+        }
+        else {
+            // set cost equal to block cost for genesis block 
+            oldImmutableCost = block.value.content.immutableCost;
+        }
         // reset all pending values back to cleared (rewind pending UTXO back to last block)
         this.pendingSpacePledged = this.clearedSpacePledged;
         this.pendingMutableReserved = this.clearedMutableReserved;
