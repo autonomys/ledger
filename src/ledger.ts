@@ -701,9 +701,10 @@ export class Ledger extends EventEmitter {
     this.pendingCreditSupply = this.clearedCreditSupply
     this.pendingMutableCost = this.clearedMutableCost
     this.pendingImmutableCost = this.clearedImmutableCost
-    this.pendingBalances = this.clearedBalances
-    this.pendingContracts = this.clearedContracts
-    this.pendingPledges = this.clearedPledges
+
+    this.pendingBalances = new Map(this.clearedBalances)
+    this.pendingContracts = new Map(this.clearedContracts)
+    this.pendingPledges = new Map(this.clearedPledges)
 
     // what is the purpose here?
       // apply all tx in the block to our UTXO
@@ -761,9 +762,10 @@ export class Ledger extends EventEmitter {
     this.clearedCreditSupply = this.pendingCreditSupply
     this.clearedMutableCost = this.pendingMutableCost
     this.clearedImmutableCost = this.pendingImmutableCost
-    this.clearedBalances = this.pendingBalances
-    this.clearedContracts = this.pendingContracts
-    this.clearedPledges = this.pendingPledges
+
+    this.clearedBalances = new Map(this.pendingBalances)
+    this.clearedContracts = new Map(this.pendingContracts)
+    this.clearedPledges = new Map(this.pendingPledges)
 
     this.pendingContracts.clear()
     this.pendingPledges.clear()
@@ -774,11 +776,11 @@ export class Ledger extends EventEmitter {
       const pendingTxRecord = new Record(key, value)
       const pendingTx = new Tx(value.content)
       let senderAddress: string
-            if (pendingTx.value.sender) {
-              senderAddress = crypto.getHash(pendingTx.value.sender)
-            } else {
-              senderAddress = NEXUS_ADDRESS
-            }
+      if (pendingTx.value.sender) {
+        senderAddress = crypto.getHash(pendingTx.value.sender)
+      } else {
+        senderAddress = NEXUS_ADDRESS
+      }
       const testTx = await pendingTx.isValid(pendingTxRecord.getSize(), this.clearedImmutableCost, this.clearedMutableCost, this.pendingBalances.get(senderAddress), this.clearedHostCount )
       if (testTx.valid) {
         await this.applyTx(pendingTx, pendingTxRecord)

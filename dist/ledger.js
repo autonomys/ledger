@@ -594,9 +594,9 @@ class Ledger extends events_1.EventEmitter {
         this.pendingCreditSupply = this.clearedCreditSupply;
         this.pendingMutableCost = this.clearedMutableCost;
         this.pendingImmutableCost = this.clearedImmutableCost;
-        this.pendingBalances = this.clearedBalances;
-        this.pendingContracts = this.clearedContracts;
-        this.pendingPledges = this.clearedPledges;
+        this.pendingBalances = new Map(this.clearedBalances);
+        this.pendingContracts = new Map(this.clearedContracts);
+        this.pendingPledges = new Map(this.clearedPledges);
         // what is the purpose here?
         // apply all tx in the block to our UTXO
         // getting all the records for the block storage contract
@@ -646,9 +646,9 @@ class Ledger extends events_1.EventEmitter {
         this.clearedCreditSupply = this.pendingCreditSupply;
         this.clearedMutableCost = this.pendingMutableCost;
         this.clearedImmutableCost = this.pendingImmutableCost;
-        this.clearedBalances = this.pendingBalances;
-        this.clearedContracts = this.pendingContracts;
-        this.clearedPledges = this.pendingPledges;
+        this.clearedBalances = new Map(this.pendingBalances);
+        this.clearedContracts = new Map(this.pendingContracts);
+        this.clearedPledges = new Map(this.pendingPledges);
         this.pendingContracts.clear();
         this.pendingPledges.clear();
         // apply each remaining valid tx in the memPool to pending (get pending back up to date on mepool)
