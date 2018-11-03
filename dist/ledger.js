@@ -632,6 +632,9 @@ class Ledger extends events_1.EventEmitter {
         // add storage fees to farmer balance 
         const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.content.publicKey));
         this.pendingBalances.set(crypto.getHash(block.value.content.publicKey), farmerBalance + blockStorageFees);
+        // recalculate mutable and immutable cost
+        this.pendingMutableCost = this.computeMutableCost(this.pendingCreditSupply, this.pendingSpaceAvailable);
+        this.pendingImmutableCost = this.computeImmutableCost(this.pendingMutableCost, this.pendingImmutableReserved, this.pendingMutableReserved);
         // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
         const contractTx = await this.createImmutableContractTx(null, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject);
         const contractRecord = await database_1.Record.createImmutable(contractTx.value, false, profile.publicKey, false);

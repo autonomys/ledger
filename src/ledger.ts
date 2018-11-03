@@ -662,8 +662,6 @@ export class Ledger extends EventEmitter {
     // apply the block to UTXO and reset everything for the next round
 
     // create a reward tx for this block and add to valid tx's 
-
-  
     const profile = this.wallet.getProfile()
 
     // have to handle reward for genesis block (no immutable cost at that point)
@@ -746,6 +744,10 @@ export class Ledger extends EventEmitter {
     // add storage fees to farmer balance 
     const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.content.publicKey))
     this.pendingBalances.set(crypto.getHash(block.value.content.publicKey), farmerBalance + blockStorageFees)
+
+    // recalculate mutable and immutable cost
+    this.pendingMutableCost = this.computeMutableCost(this.pendingCreditSupply, this.pendingSpaceAvailable)
+    this.pendingImmutableCost = this.computeImmutableCost(this.pendingMutableCost, this.pendingImmutableReserved, this.pendingMutableReserved)
 
     // sum fees from tx set and the storage contract to be added to the next block, add to valid txs
     const contractTx = await this.createImmutableContractTx(null, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
