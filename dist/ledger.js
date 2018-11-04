@@ -732,6 +732,7 @@ class Ledger extends events_1.EventEmitter {
         await txRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
         await this.applyTx(tx, txRecord);
+        this.emit('tx', txRecord);
         return txRecord;
     }
     async createNexusTx(sender, pledgeTx, amount, immutableCost) {

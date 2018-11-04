@@ -856,6 +856,7 @@ export class Ledger extends EventEmitter {
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, {...txRecord.value})
     await this.applyTx(tx, txRecord)
+    this.emit('tx', txRecord)
     return txRecord
   }
 
