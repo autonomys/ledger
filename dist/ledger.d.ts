@@ -46,6 +46,7 @@ export declare class Ledger extends EventEmitter {
     getBalance(address: string): number;
     getHeight(): number;
     getLastBlockId(): string;
+    setBlockTime(blockTime: number): void;
     bootstrap(spacePledged?: number, pledgeInterval?: number): Promise<void>;
     private computeSolution;
     private createBlock;
@@ -119,7 +120,7 @@ export declare class Block {
     }>;
     getBestSolution(plot: Set<string>): string;
     isValidSolution(publicKey: string): boolean;
-    getTimeDelay(seed?: string): number;
+    getTimeDelay(seed?: string): void;
     sign(privateKeyObject: any): Promise<void>;
     isValidSignature(): Promise<boolean>;
 }

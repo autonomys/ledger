@@ -31,7 +31,7 @@ const events_1 = require("events");
 const YEAR_IN_MS = 31536000000; // 1 year in ms
 const MONTH_IN_MS = 2628000000; // 1 momth in ms
 const HOUR_IN_MS = 3600000; // 1 hour in ms 
-const BLOCK_IN_MS = 600000; // 10 minutes in ms
+let BLOCK_IN_MS = 600000; // 10 min by default, can be overridden for testing
 const MIN_PLEDGE_INTERVAL = MONTH_IN_MS; // minium/standard pledge interval for a host
 const BLOCKS_PER_MONTH = 43200; // 1 min * 60 * 24 * 30 = 43,200 blocks
 const BYTES_PER_HASH = 1000000; // one hash per MB of pledge for simple proof of space, 32 eventually
@@ -152,6 +152,9 @@ class Ledger extends events_1.EventEmitter {
         if (this.chain.length) {
             return this.chain[this.chain.length - 1];
         }
+    }
+    setBlockTime(blockTime) {
+        BLOCK_IN_MS = blockTime;
     }
     async bootstrap(spacePledged = MIN_PLEDGE_SIZE, pledgeInterval = MIN_PLEDGE_INTERVAL) {
         // creates the genesis block to start the chain 
@@ -953,7 +956,9 @@ class Block {
     }
     getTimeDelay(seed = this._value.solution) {
         // computes the time delay for my solution, later a real VDF
-        return crypto.createProofOfTime(seed);
+        const delay = crypto.createProofOfTime(seed);
+        const maxDelay = 512000;
+        const time = Math.floor((delay / maxDelay) * BLOCK_IN_MS);
     }
     async sign(privateKeyObject) {
         // signs the block
