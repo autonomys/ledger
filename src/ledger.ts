@@ -236,10 +236,10 @@ export class Ledger extends EventEmitter {
     await this.applyBlock(blockRecord)
   }
 
-  private computeSolution(block: Block) {
+  private computeSolution(block: Block, previousBlock: string) {
     // called once a new block round starts
     // create a dummy block to compute solution and delay
-    const solution = block.getBestSolution(this.wallet.profile.proof.plot)
+    const solution = block.getBestSolution(this.wallet.profile.proof.plot, previousBlock)
     const time = block.getTimeDelay()
 
     
@@ -298,7 +298,7 @@ export class Ledger extends EventEmitter {
     block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
 
     // get best solution, sign and convert to a record
-    block.getBestSolution(this.wallet.profile.proof.plot)
+    block.getBestSolution(this.wallet.profile.proof.plot, blockData.previousBlock)
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
     await blockRecord.unpack(profile.privateKeyObject)
@@ -806,7 +806,7 @@ export class Ledger extends EventEmitter {
 
     if (this.isFarming) {
       const blockValue = new Block(block.value.content)
-      this.computeSolution(blockValue)
+      this.computeSolution(blockValue, block.key)
     }
 
     // set a new interval to wait before applying the next most valid block
@@ -1080,7 +1080,7 @@ export class Block {
     }
 
     // is the solution valid?
-    if (! this.isValidSolution(newBlock.value.publicKey)) {
+    if (! this.isValidSolution(newBlock.value.publicKey, newBlock.value.content.previousBlock)) {
       response.reason = 'invalid block, solution is invalid'
       return response
     }
@@ -1138,20 +1138,20 @@ export class Block {
     return response
   }
 
-  public getBestSolution(plot: Set<string>) {
+  public getBestSolution(plot: Set<string>, previousBlock: string) {
     // searches a plot for the best solution to the block challenge
     const bufferPlot = [...plot].map(solution => Buffer.from(solution))
-    const bufferChallnege = Buffer.from(this.value.previousBlock)
+    const bufferChallnege = Buffer.from(previousBlock)
     const bufferSoltuion = getClosestIdByXor(bufferChallnege, bufferPlot)
     this._value.solution = bufferSoltuion.toString()
     return this._value.solution
   }
 
-  public isValidSolution(publicKey: string) {
+  public isValidSolution(publicKey: string, previousBlock: string) {
     // check if the included block solution is the best for the last block
     const seed = crypto.getHash(publicKey)
     const proof = crypto.createProofOfSpace(seed, this._value.pledge)
-    return this._value.solution === this.getBestSolution(proof.plot)
+    return this._value.solution === this.getBestSolution(proof.plot, previousBlock)
   }
 
   public getTimeDelay(seed: string = this._value.solution ) {

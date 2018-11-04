@@ -200,10 +200,10 @@ class Ledger extends events_1.EventEmitter {
         this.emit('block-solution', blockRecord);
         await this.applyBlock(blockRecord);
     }
-    computeSolution(block) {
+    computeSolution(block, previousBlock) {
         // called once a new block round starts
         // create a dummy block to compute solution and delay
-        const solution = block.getBestSolution(this.wallet.profile.proof.plot);
+        const solution = block.getBestSolution(this.wallet.profile.proof.plot, previousBlock);
         const time = block.getTimeDelay();
         // set a timer to wait for time delay to checking if soltuion is best
         setTimeout(async () => {
@@ -252,7 +252,7 @@ class Ledger extends events_1.EventEmitter {
         block.setMutableCost(this.computeMutableCost(blockData.creditSupply, blockData.spacePledged));
         block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved));
         // get best solution, sign and convert to a record
-        block.getBestSolution(this.wallet.profile.proof.plot);
+        block.getBestSolution(this.wallet.profile.proof.plot, blockData.previousBlock);
         await block.sign(profile.privateKeyObject);
         const blockRecord = await database_1.Record.createImmutable(block.value, false, profile.publicKey);
         await blockRecord.unpack(profile.privateKeyObject);
@@ -688,7 +688,7 @@ class Ledger extends events_1.EventEmitter {
         }
         if (this.isFarming) {
             const blockValue = new Block(block.value.content);
-            this.computeSolution(blockValue);
+            this.computeSolution(blockValue, block.key);
         }
         // set a new interval to wait before applying the next most valid block
         setTimeout(async () => {
@@ -891,7 +891,7 @@ class Block {
             return response;
         }
         // is the solution valid?
-        if (!this.isValidSolution(newBlock.value.publicKey)) {
+        if (!this.isValidSolution(newBlock.value.publicKey, newBlock.value.content.previousBlock)) {
             response.reason = 'invalid block, solution is invalid';
             return response;
         }
@@ -940,19 +940,19 @@ class Block {
         response.valid = true;
         return response;
     }
-    getBestSolution(plot) {
+    getBestSolution(plot, previousBlock) {
         // searches a plot for the best solution to the block challenge
         const bufferPlot = [...plot].map(solution => Buffer.from(solution));
-        const bufferChallnege = Buffer.from(this.value.previousBlock);
+        const bufferChallnege = Buffer.from(previousBlock);
         const bufferSoltuion = utils_1.getClosestIdByXor(bufferChallnege, bufferPlot);
         this._value.solution = bufferSoltuion.toString();
         return this._value.solution;
     }
-    isValidSolution(publicKey) {
+    isValidSolution(publicKey, previousBlock) {
         // check if the included block solution is the best for the last block
         const seed = crypto.getHash(publicKey);
         const proof = crypto.createProofOfSpace(seed, this._value.pledge);
-        return this._value.solution === this.getBestSolution(proof.plot);
+        return this._value.solution === this.getBestSolution(proof.plot, previousBlock);
     }
     getTimeDelay(seed = this._value.solution) {
         // computes the time delay for my solution, later a real VDF

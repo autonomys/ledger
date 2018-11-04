@@ -118,8 +118,8 @@ export declare class Block {
         valid: boolean;
         reason: string;
     }>;
-    getBestSolution(plot: Set<string>): string;
-    isValidSolution(publicKey: string): boolean;
+    getBestSolution(plot: Set<string>, previousBlock: string): string;
+    isValidSolution(publicKey: string, previousBlock: string): boolean;
     getTimeDelay(seed?: string): void;
     sign(privateKeyObject: any): Promise<void>;
     isValidSignature(): Promise<boolean>;
