@@ -192,6 +192,13 @@ class Ledger extends events_1.EventEmitter {
         const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.id, spacePledged, pledgeInterval, blockData.immutableCost);
         block.addPledgeTx(pledgeRecord);
         this.validTxs.set(pledgeRecord.key, Object.assign({}, pledgeRecord.value));
+        this.wallet.profile.pledge = {
+            proof: this.wallet.profile.proof.id,
+            size: spacePledged,
+            interval: pledgeInterval,
+            createdAt: Date.now(),
+            pledgeTx: pledgeRecord.key
+        };
         // create the block, sign and convert to a record
         await block.sign(profile.privateKeyObject);
         const blockRecord = await database_1.Record.createImmutable(block.value, false, profile.publicKey);
