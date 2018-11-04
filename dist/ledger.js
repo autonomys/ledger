@@ -727,7 +727,7 @@ class Ledger extends events_1.EventEmitter {
     async createPledgeTx(sender, proof, spacePledged, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
         // creates a pledge tx instance and calculates the fee
         const profile = this.wallet.getProfile();
-        const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject);
+        const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject, sender);
         const txRecord = await database_1.Record.createImmutable(tx.value, false, profile.publicKey);
         await txRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(txRecord.key, Object.assign({}, txRecord.value));
@@ -1018,7 +1018,7 @@ class Tx {
         await tx.sign(privateKeyObject);
         return tx;
     }
-    static async createPledgeTx(proof, spacePledged, interval, immutableCost, privateKeyObject) {
+    static async createPledgeTx(proof, spacePledged, interval, immutableCost, privateKeyObject, publicKey) {
         // create a new host pledge tx
         const value = {
             type: 'pledge',
@@ -1029,6 +1029,7 @@ class Tx {
             pledgeProof: proof,
             spacePledged: spacePledged,
             pledgeInterval: interval,
+            seed: publicKey,
             signature: null
         };
         const tx = new Tx(value);

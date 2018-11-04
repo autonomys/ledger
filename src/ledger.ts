@@ -851,7 +851,7 @@ export class Ledger extends EventEmitter {
   public async createPledgeTx(sender: string, proof: string, spacePledged: number, interval = MIN_PLEDGE_INTERVAL, immutableCost = this.clearedImmutableCost) {
     // creates a pledge tx instance and calculates the fee
     const profile = this.wallet.getProfile()
-    const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject)
+    const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject, sender)
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(txRecord.key, {...txRecord.value})
@@ -1199,6 +1199,7 @@ export class Tx {
     spacePledged?: number
     pledgeInterval?: number
     pledgeTx?: string
+    seed?: string
     spaceReserved?: number
     ttl?: number
     replicationFactor?: number
@@ -1255,7 +1256,7 @@ export class Tx {
     return tx
   }
 
-  static async createPledgeTx(proof: string, spacePledged: number, interval: number, immutableCost: number, privateKeyObject: any) {
+  static async createPledgeTx(proof: string, spacePledged: number, interval: number, immutableCost: number, privateKeyObject: any, publicKey: string) {
     // create a new host pledge tx
 
     const value: Tx['value'] = {
@@ -1267,6 +1268,7 @@ export class Tx {
       pledgeProof: proof,
       spacePledged: spacePledged,
       pledgeInterval: interval,
+      seed: publicKey,
       signature: null
     }
 
