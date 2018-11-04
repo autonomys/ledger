@@ -200,10 +200,9 @@ class Ledger extends events_1.EventEmitter {
         this.emit('block-solution', blockRecord);
         await this.applyBlock(blockRecord);
     }
-    computeSolution() {
+    computeSolution(block) {
         // called once a new block round starts
         // create a dummy block to compute solution and delay
-        const block = new Block(null);
         const solution = block.getBestSolution(this.wallet.profile.proof.plot);
         const time = block.getTimeDelay();
         // set a timer to wait for time delay to checking if soltuion is best
@@ -688,7 +687,8 @@ class Ledger extends events_1.EventEmitter {
             }
         }
         if (this.isFarming) {
-            this.computeSolution();
+            const blockValue = new Block(block.value.content);
+            this.computeSolution(blockValue);
         }
         // set a new interval to wait before applying the next most valid block
         setTimeout(async () => {
