@@ -283,7 +283,7 @@ export class Ledger extends EventEmitter {
     const block = await Block.create(blockData)
 
     // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
-    const rewardTx = this.createRewardTx(profile.publicKey, this.clearedImmutableCost, blockData.previousBlock)
+    const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost, blockData.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
     block.addRewardTx(rewardRecord)
@@ -584,7 +584,7 @@ export class Ledger extends EventEmitter {
 
     // create the reward tx 
     const profile = this.wallet.getProfile()
-    const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock)
+    const rewardTx = this.createRewardTx(crypto.getHash(block.value.publicKey), previousBlock.value.immutableCost, previousBlock.value.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     rewardRecord.unpack(profile.privateKeyObject)
 

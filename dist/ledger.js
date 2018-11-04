@@ -240,7 +240,7 @@ class Ledger extends events_1.EventEmitter {
         };
         const block = await Block.create(blockData);
         // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
-        const rewardTx = this.createRewardTx(profile.publicKey, this.clearedImmutableCost, blockData.previousBlock);
+        const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost, blockData.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
         block.addRewardTx(rewardRecord);
@@ -490,7 +490,7 @@ class Ledger extends events_1.EventEmitter {
         let creditSupply = previousBlock.value.creditSupply;
         // create the reward tx 
         const profile = this.wallet.getProfile();
-        const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock);
+        const rewardTx = this.createRewardTx(crypto.getHash(block.value.publicKey), previousBlock.value.immutableCost, previousBlock.value.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         rewardRecord.unpack(profile.privateKeyObject);
         // later, validate there is only one reward tx and one block storage tx per block
