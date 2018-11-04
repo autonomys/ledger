@@ -671,7 +671,13 @@ export class Ledger extends EventEmitter {
 
     // create the reward tx for this block and add to mempool
     const receiver = crypto.getHash(block.value.content.publicKey)
-    const rewardTx = this.createRewardTx(receiver, block.value.content.immutableCost, block.value.content.previousBlock)
+    let immutableCost: number = null
+        if (block.value.content.previousBlock) {
+          immutableCost = this.clearedImmutableCost
+        } else {
+          immutableCost = block.value.content.immutableCost
+        }
+    const rewardTx = this.createRewardTx(receiver, immutableCost, block.value.content.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(rewardRecord.key, {...rewardRecord.value})

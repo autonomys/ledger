@@ -570,7 +570,14 @@ class Ledger extends events_1.EventEmitter {
         // have to handle reward for genesis block (no immutable cost at that point)
         // create the reward tx for this block and add to mempool
         const receiver = crypto.getHash(block.value.content.publicKey);
-        const rewardTx = this.createRewardTx(receiver, block.value.content.immutableCost, block.value.content.previousBlock);
+        let immutableCost = null;
+        if (block.value.content.previousBlock) {
+            immutableCost = this.clearedImmutableCost;
+        }
+        else {
+            immutableCost = block.value.content.immutableCost;
+        }
+        const rewardTx = this.createRewardTx(receiver, immutableCost, block.value.content.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(rewardRecord.key, Object.assign({}, rewardRecord.value));
