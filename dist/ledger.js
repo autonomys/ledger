@@ -114,6 +114,7 @@ class Ledger extends events_1.EventEmitter {
         // work backwards from payment block to funding block
         while (blockId !== pledgeTxId) {
             const blockValue = JSON.parse(await this.storage.get(blockId));
+            blockValue.content = JSON.stringify(blockValue.content);
             const blockRecord = database_1.Record.readPacked(blockId, blockValue);
             blockRecord.unpack(null);
             spaceRatio = spacePledged / blockRecord.value.content.spacePledged;
@@ -418,6 +419,7 @@ class Ledger extends events_1.EventEmitter {
                 // we can resolve later once we have a better data structure for querying records 
                 const stringValue = await this.storage.get(tx.value.pledgeTx);
                 const value = JSON.parse(stringValue);
+                value.content = JSON.stringify(value.content);
                 const pledgedRecord = database_1.Record.readPacked(tx.value.pledgeTx, value);
                 const pledgeCost = pledgedRecord.value.content.cost;
                 // seperate tx fee from base storage cost
