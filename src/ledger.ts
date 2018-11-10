@@ -1027,6 +1027,7 @@ export class Block {
     }
 
     // are there two txs
+    this._value.txSet = new Set(this._value.txSet)
     if (this._value.txSet.size !== 2) {
       response.reason = 'invalid genesis block, can only have two tx'
       return response
