@@ -784,7 +784,6 @@ exports.Ledger = Ledger;
 class Block {
     constructor(_value) {
         this._value = _value;
-        this._value.txSet = new Set([..._value.txSet]);
     }
     // getters
     get value() {

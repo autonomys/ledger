@@ -938,7 +938,6 @@ export class Block {
 
   constructor(_value: Block['value']) {
     this._value = _value
-    this._value.txSet = new Set([..._value.txSet])
   }
 
 
