@@ -120,7 +120,7 @@ export declare class Block {
     }>;
     getBestSolution(plot: Set<string>, previousBlock: string): string;
     isValidSolution(publicKey: string, previousBlock: string): boolean;
-    getTimeDelay(seed?: string): void;
+    getTimeDelay(seed?: string): number;
     sign(privateKeyObject: any): Promise<void>;
     isValidSignature(): Promise<boolean>;
 }

@@ -239,7 +239,6 @@ export class Ledger extends EventEmitter {
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
     await blockRecord.unpack(profile.privateKeyObject)
-
     // apply and emit the block 
     this.emit('block-solution', blockRecord)
     await this.applyBlock(blockRecord)
@@ -250,7 +249,6 @@ export class Ledger extends EventEmitter {
     // create a dummy block to compute solution and delay
     const solution = block.getBestSolution(this.wallet.profile.proof.plot, previousBlock)
     const time = block.getTimeDelay()
-
     
     // set a timer to wait for time delay to checking if soltuion is best
     setTimeout( async () => {
@@ -1179,7 +1177,7 @@ export class Block {
     // computes the time delay for my solution, later a real VDF
     const delay = crypto.createProofOfTime(seed)
     const maxDelay = 512000
-    const time = Math.floor((delay / maxDelay) * BLOCK_IN_MS)
+    return Math.floor((delay / maxDelay) * BLOCK_IN_MS)
   }
 
   public async sign(privateKeyObject: any) {

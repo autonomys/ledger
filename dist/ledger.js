@@ -979,7 +979,7 @@ class Block {
         // computes the time delay for my solution, later a real VDF
         const delay = crypto.createProofOfTime(seed);
         const maxDelay = 512000;
-        const time = Math.floor((delay / maxDelay) * BLOCK_IN_MS);
+        return Math.floor((delay / maxDelay) * BLOCK_IN_MS);
     }
     async sign(privateKeyObject) {
         // signs the block
