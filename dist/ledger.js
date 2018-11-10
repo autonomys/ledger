@@ -279,12 +279,15 @@ class Ledger extends events_1.EventEmitter {
         }
         // validate the tx
         const tx = new Tx(record.value.content);
-        const senderBalance = this.getBalance(crypto.getHash(tx.value.sender));
+        let senderBalance = null;
+        if (tx.value.sender) {
+            senderBalance = this.getBalance(crypto.getHash(tx.value.sender));
+        }
         const txTest = await tx.isValid(record.getSize(), this.clearedMutableCost, this.clearedImmutableCost, senderBalance, this.clearedHostCount);
         // ensure extra reward tx are not being created
-        if (tx.value.type === 'reward') {
-            throw new Error('Invalid tx, reward txs are not gossiped');
-        }
+        // if (tx.value.type === 'reward') {
+        //   throw new Error('Invalid tx, reward txs are not gossiped')
+        // }
         // ensure extras storage contracts are not being created
         if (tx.value.type === 'contract' && tx.value.sender === NEXUS_ADDRESS) {
             throw new Error('Invalid tx, block storage contracts are not gossiped');
@@ -1112,7 +1115,7 @@ class Tx {
             return response;
         }
         // address has funds
-        if (this._value.type !== 'reward' || this._value.sender !== NEXUS_ADDRESS) {
+        if (this._value.type !== 'reward' && this._value.sender !== NEXUS_ADDRESS) {
             if ((this._value.amount + this._value.cost) >= senderBalance) {
                 response.reason = 'invalid tx, insufficient funds in address';
                 return response;
