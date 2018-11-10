@@ -273,7 +273,7 @@ export class Ledger extends EventEmitter {
 
     const profile = this.wallet.getProfile()
     const blockData: Block['value'] = {
-      height: this.getHeight(),
+      height: this.getHeight() + 1,
       previousBlock: this.getLastBlockId(),
       spacePledged: this.pendingSpacePledged,
       immutableReserved: this.pendingImmutableReserved,
@@ -1083,7 +1083,7 @@ export class Block {
     }
     
     // is it at the correct height?
-    if (this._value.height !== previousBlock.value.height) {
+    if (this._value.height !== (previousBlock.value.height + 1)) {
       response.reason = 'invalid block, wrong block height'
       return response
     }

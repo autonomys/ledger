@@ -231,7 +231,7 @@ class Ledger extends events_1.EventEmitter {
         // reward tx is created on apply block if this is most valid block 
         const profile = this.wallet.getProfile();
         const blockData = {
-            height: this.getHeight(),
+            height: this.getHeight() + 1,
             previousBlock: this.getLastBlockId(),
             spacePledged: this.pendingSpacePledged,
             immutableReserved: this.pendingImmutableReserved,
@@ -897,7 +897,7 @@ class Block {
             reason: null
         };
         // is it at the correct height?
-        if (this._value.height !== previousBlock.value.height) {
+        if (this._value.height !== (previousBlock.value.height + 1)) {
             response.reason = 'invalid block, wrong block height';
             return response;
         }
