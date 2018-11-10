@@ -17,5 +17,9 @@
     "@subspace/crypto": "github:subspace/crypto",
     "@subspace/database": "github:subspace/database",
     "@subspace/utils": "github:subspace/utils"
+  },
+  "scripts": {
+    "build": "rm -rf dist/* && tsc -b",
+    "watch": "tsc -w"
   }
 }
