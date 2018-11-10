@@ -147,7 +147,7 @@ class Ledger extends events_1.EventEmitter {
     }
     getHeight() {
         // get the current height of the chain
-        return this.chain.length;
+        return this.chain.length - 1;
     }
     getLastBlockId() {
         if (this.chain.length) {

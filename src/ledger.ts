@@ -171,7 +171,7 @@ export class Ledger extends EventEmitter {
 
   public getHeight() {
     // get the current height of the chain
-    return this.chain.length
+    return this.chain.length - 1
   }
 
   public getLastBlockId() {
