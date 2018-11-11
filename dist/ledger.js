@@ -250,6 +250,8 @@ class Ledger extends events_1.EventEmitter {
         const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost, blockData.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
+        // add to valid tx mempool 
+        this.validTxs.set(rewardRecord.key, Object.assign({}, rewardRecord.value));
         block.addRewardTx(rewardRecord);
         // add all valid tx's in the mempool into the tx set 
         for (const [txId] of this.validTxs) {
@@ -481,13 +483,17 @@ class Ledger extends events_1.EventEmitter {
         }
         const block = new Block(record.value.content);
         // fetch the last block header to compare
+        // new blocks are being gossiped before the current block has been applied 
+        // block 1 -> gossiped 
+        // block interval elapses
+        // block is validated and applied 
+        // fetch block 0 to compare (cleared)
         const previousBlockKey = this.chain[this.chain.length - 1];
         const previousBlockRecordValue = this.clearedBlocks.get(previousBlockKey);
         const previousBlock = {
             key: previousBlockKey,
             value: Object.assign({}, previousBlockRecordValue.content)
         };
-        // have to add the reward tx first 
         // is the block valid?
         const blockTest = await block.isValid(record, previousBlock);
         if (!blockTest.valid) {
@@ -502,10 +508,13 @@ class Ledger extends events_1.EventEmitter {
         let creditSupply = previousBlock.value.creditSupply;
         // create the reward tx 
         const profile = this.wallet.getProfile();
-        const rewardTx = this.createRewardTx(crypto.getHash(block.value.publicKey), previousBlock.value.immutableCost, previousBlock.value.previousBlock);
+        const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         rewardRecord.unpack(profile.privateKeyObject);
+        this.validTxs.set(rewardRecord.key, Object.assign({}, rewardRecord.value));
         // later, validate there is only one reward tx and one block storage tx per block
+        // have to add the reward tx for this block
+        // and the 
         for (const txId of block.value.txSet) {
             // check if in the memPool map
             if (!this.validTxs.has(txId)) {
@@ -592,7 +601,9 @@ class Ledger extends events_1.EventEmitter {
         const rewardTx = this.createRewardTx(receiver, immutableCost, block.value.content.previousBlock);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(rewardRecord.key, Object.assign({}, rewardRecord.value));
+        if (!this.validTxs.has(rewardRecord.key)) {
+            this.validTxs.set(rewardRecord.key, Object.assign({}, rewardRecord.value));
+        }
         // save the block and add to cleared blocks, flush the pending blocks 
         await rewardRecord.pack(profile.publicKey);
         await this.storage.put(block.key, JSON.stringify(block.value));
@@ -815,7 +826,7 @@ class Block {
     }
     addRewardTx(rewardRecord) {
         this._value.creditSupply += rewardRecord.value.content.amount;
-        this._value.txSet.add(rewardRecord.key);
+        // this._value.txSet.add(rewardRecord.key)
     }
     addPledgeTx(pledgeRecord) {
         this._value.spacePledged += pledgeRecord.value.content.spacePledged;
