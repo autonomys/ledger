@@ -69,7 +69,6 @@ export declare class Ledger extends EventEmitter {
 }
 export declare class Block {
     _value: {
-        height: number;
         previousBlock: string;
         spacePledged: number;
         immutableReserved: number;
@@ -86,7 +85,6 @@ export declare class Block {
     };
     constructor(_value: Block['value']);
     readonly value: {
-        height: number;
         previousBlock: string;
         spacePledged: number;
         immutableReserved: number;

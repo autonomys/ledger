@@ -42,11 +42,11 @@ const MAX_IMMUTABLE_CONTRACT_SIZE = .001 * this.spaceAvailable;
 const MAX_MUTABLE_CONTRACT_SIZE = .1 * this.spaceAvailable;
 const MIN_PLEDGE_SIZE = 10000000000; // 10 GB in bytes
 const MAX_PLEDGE_SIZE = 10000000000; // 10 GB for now
-const BASE_CREDIT_TX_RECORD_SIZE = 1245; // size of each tx type as full SSDB record in bytes, with null values for variable fields
-const BASE_PLEDGE_TX_RECORD_SIZE = 741;
-const BASE_CONTRACT_TX_RECORD_SIZE = 2281;
-const BASE_NEXUS_TX_RECORD_SIZE = 409;
-const BASE_REWARD_TX_RECORD_SIZE = 402;
+const BASE_CREDIT_TX_RECORD_SIZE = 1345; // size of each tx type as full SSDB record in bytes, with null values for variable fields
+const BASE_PLEDGE_TX_RECORD_SIZE = 841;
+const BASE_CONTRACT_TX_RECORD_SIZE = 2381;
+const BASE_NEXUS_TX_RECORD_SIZE = 509;
+const BASE_REWARD_TX_RECORD_SIZE = 502;
 const NEXUS_ADDRESS = crypto.getHash('nexus');
 const FARMER_ADDRESS = crypto.getHash('farmer');
 const TX_FEE_MULTIPLIER = 1.02;
@@ -164,7 +164,6 @@ class Ledger extends events_1.EventEmitter {
         // next farmer will create a contract for this block based on CoS for this block 
         const profile = this.wallet.getProfile();
         const blockData = {
-            height: 0,
             previousBlock: null,
             spacePledged: 0,
             immutableReserved: 0,
@@ -203,9 +202,9 @@ class Ledger extends events_1.EventEmitter {
         // create the block, sign and convert to a record
         await block.sign(profile.privateKeyObject);
         const blockRecord = await database_1.Record.createImmutable(block.value, false, profile.publicKey);
+        this.emit('block-solution', Object.assign({}, blockRecord));
         await blockRecord.unpack(profile.privateKeyObject);
         // apply and emit the block 
-        this.emit('block-solution', blockRecord);
         await this.applyBlock(blockRecord);
     }
     computeSolution(block, previousBlock) {
@@ -219,7 +218,8 @@ class Ledger extends events_1.EventEmitter {
                 const block = await this.createBlock();
                 this.validBlocks.unshift(block.key);
                 this.pendingBlocks.set(block.key, Object.assign({}, block.value));
-                this.emit('block-solution', block);
+                await block.pack(null);
+                this.emit('block-solution', Object.assign({}, block));
                 // if still best solution when block interval expires, it will be applied
             }
         }, time);
@@ -231,7 +231,6 @@ class Ledger extends events_1.EventEmitter {
         // reward tx is created on apply block if this is most valid block 
         const profile = this.wallet.getProfile();
         const blockData = {
-            height: this.getHeight() + 1,
             previousBlock: this.getLastBlockId(),
             spacePledged: this.pendingSpacePledged,
             immutableReserved: this.pendingImmutableReserved,
@@ -488,6 +487,7 @@ class Ledger extends events_1.EventEmitter {
             key: previousBlockKey,
             value: Object.assign({}, previousBlockRecordValue.content)
         };
+        // have to add the reward tx first 
         // is the block valid?
         const blockTest = await block.isValid(record, previousBlock);
         if (!blockTest.valid) {
@@ -667,7 +667,9 @@ class Ledger extends events_1.EventEmitter {
         const contractTx = await this.createImmutableContractTx(null, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject);
         const contractRecord = await database_1.Record.createImmutable(contractTx.value, false, profile.publicKey, false);
         await contractRecord.unpack(profile.privateKeyObject);
-        this.validTxs.set(contractRecord.key, Object.assign({}, contractRecord.value));
+        if (this.hasLedger) {
+            this.validTxs.set(contractRecord.key, Object.assign({}, contractRecord.value));
+        }
         // reset cleared balances back to pending (fast-forward cleared utxo to this block)
         this.clearedSpacePledged = this.pendingSpacePledged;
         this.clearedMutableReserved = this.pendingMutableReserved;
@@ -710,12 +712,14 @@ class Ledger extends events_1.EventEmitter {
             this.computeSolution(blockValue, block.key);
         }
         // set a new interval to wait before applying the next most valid block
-        setTimeout(async () => {
-            const blockId = this.validBlocks[0];
-            const blockValue = this.pendingBlocks.get(blockId);
-            const blockRecord = database_1.Record.readUnpacked(blockId, Object.assign({}, blockValue));
-            await this.applyBlock(blockRecord);
-        }, BLOCK_IN_MS);
+        if (this.hasLedger) {
+            setTimeout(async () => {
+                const blockId = this.validBlocks[0];
+                const blockValue = this.pendingBlocks.get(blockId);
+                const blockRecord = database_1.Record.readUnpacked(blockId, Object.assign({}, blockValue));
+                await this.applyBlock(blockRecord);
+            }, BLOCK_IN_MS);
+        }
     }
     createRewardTx(receiver, immutableCost, previousBlock) {
         // creates a reward tx for any farmer instance and calculates the fee
@@ -822,11 +826,11 @@ class Block {
             valid: false,
             reason: null
         };
-        // does it have height 0 
-        if (this._value.height !== 0) {
-            response.reason = 'invalid genesis block, wrong block height';
-            return response;
-        }
+        // // does it have height 0 
+        // if (this._value.height !== 0) {
+        //   response.reason = 'invalid genesis block, wrong block height'
+        //   return response
+        // }
         // is the record size under 1 MB
         if (block.getSize() > 1000000) {
             response.reason = 'invalid genesis block, block is larger than one megabyte';
@@ -897,10 +901,10 @@ class Block {
             reason: null
         };
         // is it at the correct height?
-        if (this._value.height !== (previousBlock.value.height + 1)) {
-            response.reason = 'invalid block, wrong block height';
-            return response;
-        }
+        // if (this._value.height !== (previousBlock.value.height + 1)) {
+        //   response.reason = 'invalid block, wrong block height'
+        //   return response
+        // }
         // does it reference the correct last block?
         if (this._value.previousBlock !== previousBlock.key) {
             response.reason = 'invalid block, references incorrect parent block';
@@ -912,7 +916,7 @@ class Block {
             return response;
         }
         // is the solution valid?
-        if (!this.isValidSolution(newBlock.value.publicKey, newBlock.value.content.previousBlock)) {
+        if (!this.isValidSolution(newBlock.value.content.publicKey, newBlock.value.content.previousBlock)) {
             response.reason = 'invalid block, solution is invalid';
             return response;
         }
@@ -978,7 +982,7 @@ class Block {
     getTimeDelay(seed = this._value.solution) {
         // computes the time delay for my solution, later a real VDF
         const delay = crypto.createProofOfTime(seed);
-        const maxDelay = 512000;
+        const maxDelay = 1024000;
         return Math.floor((delay / maxDelay) * BLOCK_IN_MS);
     }
     async sign(privateKeyObject) {
