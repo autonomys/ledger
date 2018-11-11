@@ -1121,7 +1121,7 @@ class Tx {
             return response;
         }
         // address has funds
-        if (this._value.type !== 'reward' && this._value.sender !== NEXUS_ADDRESS) {
+        if (this._value.type !== 'reward' && this._value.sender !== NEXUS_ADDRESS && this._value.sender) {
             if ((this._value.amount + this._value.cost) >= senderBalance) {
                 response.reason = 'invalid tx, insufficient funds in address';
                 return response;
