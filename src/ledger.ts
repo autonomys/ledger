@@ -627,12 +627,11 @@ export class Ledger extends EventEmitter {
             valid: false,
             reason: 'Invalid block, block contains an invalid tx'
           }
-        } else if(txId === rewardRecord.key) {
-          // this is the reward tx 
-          creditSupply += rewardRecord.value.content.amount
         } else {
           // throw error for now, later request the tx, then validate the tx
+          console.log('Missing tx is: ', txId)
           throw new Error('Tx in proposed block is not in the mem pool')
+
         }
       }
 
@@ -649,6 +648,8 @@ export class Ledger extends EventEmitter {
         } else {
           immutableReserved += tx.spaceReserved
         }
+      } else if (tx.type === 'reward') {
+        creditSupply += tx.amount
       }
     }
 
