@@ -220,11 +220,13 @@ export class Ledger extends EventEmitter {
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privatKeyObject)
     block.addRewardTx(rewardRecord)
+    block.value.txSet.add(rewardRecord.key)
+    this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
 
     // create the pledge tx and record, add to tx set
     const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.id, spacePledged, pledgeInterval, blockData.immutableCost)
     block.addPledgeTx(pledgeRecord)
-    this.validTxs.set(pledgeRecord.key, {...pledgeRecord.value})
+    this.validTxs.set(pledgeRecord.key, JSON.parse(JSON.stringify(pledgeRecord.value)))
 
     this.wallet.profile.pledge = {
       proof: this.wallet.profile.proof.id,
@@ -237,7 +239,7 @@ export class Ledger extends EventEmitter {
     // create the block, sign and convert to a record
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
-    this.emit('block-solution', {...blockRecord})
+    this.emit('block-solution', JSON.parse(JSON.stringify(blockRecord)))
     await blockRecord.unpack(profile.privateKeyObject)
     // apply and emit the block 
     await this.applyBlock(blockRecord)
@@ -254,9 +256,9 @@ export class Ledger extends EventEmitter {
       if (this.isBestBlockSolution(solution)) {
         const block = await this.createBlock()
         this.validBlocks.unshift(block.key)
-        this.pendingBlocks.set(block.key, {...block.value})
+        this.pendingBlocks.set(block.key, JSON.parse(JSON.stringify(block.value)))
         await block.pack(null)
-        this.emit('block-solution', {...block})
+        this.emit('block-solution', JSON.parse(JSON.stringify(block)))
         // if still best solution when block interval expires, it will be applied
       }
     }, time)
@@ -294,7 +296,7 @@ export class Ledger extends EventEmitter {
     await rewardRecord.unpack(profile.privateKeyObject)
 
     // add to valid tx mempool 
-    this.validTxs.set(rewardRecord.key, {...rewardRecord.value})
+    this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
 
     block.addRewardTx(rewardRecord)
     
@@ -356,7 +358,7 @@ export class Ledger extends EventEmitter {
 
     await this.applyTx(tx, record)
     
-    this.validTxs.set(record.key, {...record.value})
+    this.validTxs.set(record.key, JSON.parse(JSON.stringify(record.value)))
 
     txTest.valid = true
     return txTest
@@ -585,7 +587,7 @@ export class Ledger extends EventEmitter {
     const previousBlockRecordValue = this.clearedBlocks.get(previousBlockKey)
     const previousBlock = {
       key: previousBlockKey,
-      value: {...previousBlockRecordValue.content}
+      value: JSON.parse(JSON.stringify(previousBlockRecordValue.content))
     }
 
     // is the block valid?
@@ -607,7 +609,7 @@ export class Ledger extends EventEmitter {
     const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     rewardRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(rewardRecord.key, {...rewardRecord.value})
+    this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
 
     // later, validate there is only one reward tx and one block storage tx per block
 
@@ -634,7 +636,7 @@ export class Ledger extends EventEmitter {
       }
 
       const recordValue = this.validTxs.get(txId)
-      const tx = {...recordValue.content}
+      const tx = JSON.parse(JSON.stringify(recordValue.content))
       if (tx.type === 'pledge') {  
         // if pledge, modify spaceAvailable, add to host count 
         spacePledged += tx.spacePledged
@@ -673,7 +675,7 @@ export class Ledger extends EventEmitter {
     // is it the best solution proposed?
     if (this.isBestBlockSolution(block.value.solution)) {
       this.validBlocks.unshift(record.key)
-      this.pendingBlocks.set(record.key, {...record.value})
+      this.pendingBlocks.set(record.key, JSON.parse(JSON.stringify(record.value)))
     } else {
       this.validBlocks.push(record.key)
     }
@@ -706,13 +708,13 @@ export class Ledger extends EventEmitter {
     await rewardRecord.unpack(profile.privateKeyObject)
 
     if (!this.validTxs.has(rewardRecord.key)) {
-      this.validTxs.set(rewardRecord.key, {...rewardRecord.value})
+      this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
     }
     
     // save the block and add to cleared blocks, flush the pending blocks 
     await rewardRecord.pack(profile.publicKey)
     await this.storage.put(block.key, JSON.stringify(block.value))
-    this.clearedBlocks.set(block.key, {...block.value})
+    this.clearedBlocks.set(block.key, JSON.parse(JSON.stringify(block.value)))
     
     // add the block to my chain 
     this.chain.push(block.key)
@@ -763,8 +765,8 @@ export class Ledger extends EventEmitter {
     for (const txId of block.value.content.txSet) {
       // get the tx value and record
       const txRecordValue = this.validTxs.get(txId)
-      const txRecord = new Record(txId, {...txRecordValue})
-      const tx = new Tx({...txRecordValue.content})
+      const txRecord = new Record(txId, JSON.parse(JSON.stringify(txRecordValue)))
+      const tx = new Tx(JSON.parse(JSON.stringify(txRecordValue.content)))
 
       // get cost of storage to sum cost of storage contract and farmer fees
       recordIds.add(txId)
@@ -797,7 +799,7 @@ export class Ledger extends EventEmitter {
     const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
     await contractRecord.unpack(profile.privateKeyObject)
     if (this.hasLedger) {
-      this.validTxs.set(contractRecord.key, {...contractRecord.value})
+      this.validTxs.set(contractRecord.key, JSON.parse(JSON.stringify(contractRecord.value)))
     }
     
     
@@ -851,7 +853,7 @@ export class Ledger extends EventEmitter {
       setTimeout( async () => {
         const blockId = this.validBlocks[0]
         const blockValue = this.pendingBlocks.get(blockId)
-        const blockRecord = Record.readUnpacked(blockId, {...blockValue})
+        const blockRecord = Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)))
         await this.applyBlock(blockRecord)
       }, BLOCK_IN_MS)
     }
@@ -876,7 +878,7 @@ export class Ledger extends EventEmitter {
     // create the record, add to the mempool, apply to balances
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, {...txRecord.value})
+    this.validTxs.set(txRecord.key, JSON.parse(JSON.stringify(txRecord.value)))
     await this.applyTx(tx, txRecord)
     return txRecord
   }
@@ -887,7 +889,7 @@ export class Ledger extends EventEmitter {
     const tx = await Tx.createPledgeTx(proof, spacePledged, interval, immutableCost, profile.privateKeyObject, sender)
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, {...txRecord.value})
+    this.validTxs.set(txRecord.key, JSON.parse(JSON.stringify(txRecord.value)))
     await this.applyTx(tx, txRecord)
     this.emit('tx', txRecord)
     return txRecord
@@ -899,7 +901,7 @@ export class Ledger extends EventEmitter {
     const tx = Tx.createNexusTx(sender, amount, pledgeTx, immutableCost)
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, {...txRecord.value})
+    this.validTxs.set(txRecord.key, JSON.parse(JSON.stringify(txRecord.value)))
     await this.applyTx(tx, txRecord)
     return txRecord
   }
@@ -937,7 +939,7 @@ export class Ledger extends EventEmitter {
 
     const txRecord = await Record.createImmutable(tx.value, false, profile.publicKey)
     await txRecord.unpack(profile.privateKeyObject)
-    this.validTxs.set(txRecord.key, {...txRecord.value})
+    this.validTxs.set(txRecord.key, JSON.parse(JSON.stringify(txRecord.value)))
     await this.applyTx(tx, txRecord)
     return txRecord
   } 
@@ -1207,7 +1209,7 @@ export class Block {
   }
 
   public async isValidSignature() {
-    const unsignedBlock = { ...this._value} 
+    const unsignedBlock = JSON.parse(JSON.stringify(this._value))
     unsignedBlock.signature = null
     return await crypto.isValidSignature(unsignedBlock, this._value.signature, this._value.publicKey)
   }
@@ -1602,7 +1604,7 @@ export class Tx {
   }
 
   public async isValidSignature() {
-    const unsignedTx = { ...this._value} 
+    const unsignedTx = JSON.parse(JSON.stringify(this._value))
     unsignedTx.signature = null
     return await crypto.isValidSignature(unsignedTx, this._value.signature, this._value.sender)
   } 
