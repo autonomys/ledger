@@ -306,7 +306,8 @@ export class Ledger extends EventEmitter {
      }
      
     // compute cost of mutable and immutable storage for this block
-    block.setMutableCost(this.computeMutableCost(blockData.creditSupply, blockData.spacePledged))
+    const spaceAvailable = blockData.spacePledged - blockData.mutableCost - blockData.immutableCost
+    block.setMutableCost(this.computeMutableCost(blockData.creditSupply, spaceAvailable))
     block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
 
     // get best solution, sign and convert to a record
@@ -659,13 +660,13 @@ export class Ledger extends EventEmitter {
     const immutableCost = this.computeImmutableCost(mutableCost, mutableReserved, immutableReserved)
     
     // are the block constants calculated correctly?
-    if (!(spacePledged === block.value.spacePledged &&
-        immutableReserved === block.value.immutableReserved &&
-        mutableReserved === block.value.mutableReserved &&
-        immutableCost === block.value.immutableCost &&
-        mutableCost === block.value.mutableCost &&
-        hostCount === block.value.hostCount &&
-        creditSupply === block.value.creditSupply
+    if ((spacePledged !== block.value.spacePledged ||
+        immutableReserved !== block.value.immutableReserved ||
+        mutableReserved !== block.value.mutableReserved ||
+        immutableCost !== block.value.immutableCost ||
+        mutableCost !== block.value.mutableCost ||
+        hostCount !== block.value.hostCount ||
+        creditSupply !== block.value.creditSupply
     )) {
       this.invalidBlocks.push(record.key)
       return {
