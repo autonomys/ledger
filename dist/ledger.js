@@ -510,7 +510,7 @@ class Ledger extends events_1.EventEmitter {
         let creditSupply = previousBlock.value.creditSupply;
         // create the reward tx 
         const profile = this.wallet.getProfile();
-        const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost);
+        const rewardTx = this.createRewardTx(crypto.getHash(block.value.publicKey), previousBlock.value.immutableCost);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)));
