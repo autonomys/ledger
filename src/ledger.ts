@@ -306,7 +306,7 @@ export class Ledger extends EventEmitter {
      }
      
     // compute cost of mutable and immutable storage for this block
-    const spaceAvailable = blockData.spacePledged - blockData.mutableCost - blockData.immutableCost
+    const spaceAvailable = blockData.spacePledged - blockData.mutableReserved - blockData.immutableReserved
     block.setMutableCost(this.computeMutableCost(blockData.creditSupply, spaceAvailable))
     block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
 
