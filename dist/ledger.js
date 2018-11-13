@@ -184,7 +184,7 @@ class Ledger extends events_1.EventEmitter {
         block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved));
         // create the reward tx and record, add to tx set
         const receiver = crypto.getHash(profile.publicKey);
-        const rewardTx = this.createRewardTx(receiver, blockData.immutableCost, blockData.previousBlock);
+        const rewardTx = this.createRewardTx(receiver, blockData.immutableCost);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privatKeyObject);
         block.addRewardTx(rewardRecord);
@@ -249,7 +249,7 @@ class Ledger extends events_1.EventEmitter {
         };
         const block = await Block.create(blockData);
         // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
-        const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost, blockData.previousBlock);
+        const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
         // add to valid tx mempool 
@@ -510,9 +510,9 @@ class Ledger extends events_1.EventEmitter {
         let creditSupply = previousBlock.value.creditSupply;
         // create the reward tx 
         const profile = this.wallet.getProfile();
-        const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock);
+        const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
-        rewardRecord.unpack(profile.privateKeyObject);
+        await rewardRecord.unpack(profile.privateKeyObject);
         this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)));
         // later, validate there is only one reward tx and one block storage tx per block
         // have to add the reward tx for this block
@@ -600,7 +600,7 @@ class Ledger extends events_1.EventEmitter {
         else {
             immutableCost = block.value.content.immutableCost;
         }
-        const rewardTx = this.createRewardTx(receiver, immutableCost, block.value.content.previousBlock);
+        const rewardTx = this.createRewardTx(receiver, immutableCost);
         const rewardRecord = await database_1.Record.createImmutable(rewardTx.value, false, profile.publicKey, false);
         await rewardRecord.unpack(profile.privateKeyObject);
         if (!this.validTxs.has(rewardRecord.key)) {
@@ -734,9 +734,9 @@ class Ledger extends events_1.EventEmitter {
             }, BLOCK_IN_MS);
         }
     }
-    createRewardTx(receiver, immutableCost, previousBlock) {
+    createRewardTx(receiver, immutableCost) {
         // creates a reward tx for any farmer instance and calculates the fee
-        return Tx.createRewardTx(receiver, previousBlock, immutableCost);
+        return Tx.createRewardTx(receiver, immutableCost);
     }
     async createCreditTx(sender, receiver, amount) {
         // creates a credit tx instance and calculates the fee
@@ -1018,13 +1018,12 @@ class Tx {
         return this._value;
     }
     // static methods
-    static createRewardTx(receiver, previousBlock, immutableCost) {
+    static createRewardTx(receiver, immutableCost) {
         // create and return new reward tx for farmer who solved the block challenge
         const value = {
             type: 'reward',
             sender: null,
             receiver: receiver,
-            previousBlock,
             amount: 100,
             cost: null,
             signature: null

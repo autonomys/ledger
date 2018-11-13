@@ -60,7 +60,7 @@ export declare class Ledger extends EventEmitter {
         reason: string;
     }>;
     applyBlock(block: Record): Promise<void>;
-    createRewardTx(receiver: string, immutableCost: number, previousBlock: string): Tx;
+    createRewardTx(receiver: string, immutableCost: number): Tx;
     createCreditTx(sender: string, receiver: string, amount: number): Promise<Record>;
     createPledgeTx(sender: string, proof: string, spacePledged: number, interval?: number, immutableCost?: number): Promise<Record>;
     createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number): Promise<Record>;
@@ -164,7 +164,7 @@ export declare class Tx {
         contractSig?: string;
         contractId?: string;
     };
-    static createRewardTx(receiver: string, previousBlock: string, immutableCost: number): Tx;
+    static createRewardTx(receiver: string, immutableCost: number): Tx;
     static createCreditTx(sender: string, receiver: string, amount: number, immutableCost: number, privateKeyObject: any): Promise<Tx>;
     static createPledgeTx(proof: string, spacePledged: number, interval: number, immutableCost: number, privateKeyObject: any, publicKey: string): Promise<Tx>;
     static createNexusTx(sender: string, amount: number, pledgeTx: string, immutableCost: number): Tx;

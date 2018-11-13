@@ -216,7 +216,7 @@ export class Ledger extends EventEmitter {
 
     // create the reward tx and record, add to tx set
     const receiver = crypto.getHash(profile.publicKey)
-    const rewardTx = this.createRewardTx(receiver, blockData.immutableCost, blockData.previousBlock)
+    const rewardTx = this.createRewardTx(receiver, blockData.immutableCost)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privatKeyObject)
     block.addRewardTx(rewardRecord)
@@ -291,7 +291,7 @@ export class Ledger extends EventEmitter {
     const block = await Block.create(blockData)
 
     // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
-    const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost, blockData.previousBlock)
+    const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
 
@@ -606,15 +606,16 @@ export class Ledger extends EventEmitter {
 
     // create the reward tx 
     const profile = this.wallet.getProfile()
-    const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost, previousBlock.value.previousBlock)
+    const rewardTx = this.createRewardTx(block.value.publicKey, previousBlock.value.immutableCost)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
-    rewardRecord.unpack(profile.privateKeyObject)
+    await rewardRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
 
     // later, validate there is only one reward tx and one block storage tx per block
 
     // have to add the reward tx for this block
     // and the 
+
 
     for (const txId of block.value.txSet) {
       // check if in the memPool map
@@ -703,7 +704,7 @@ export class Ledger extends EventEmitter {
         } else {
           immutableCost = block.value.content.immutableCost
         }
-    const rewardTx = this.createRewardTx(receiver, immutableCost, block.value.content.previousBlock)
+    const rewardTx = this.createRewardTx(receiver, immutableCost)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
 
@@ -859,9 +860,9 @@ export class Ledger extends EventEmitter {
     }
   }
 
-  public createRewardTx(receiver: string, immutableCost: number, previousBlock: string) {
+  public createRewardTx(receiver: string, immutableCost: number) {
     // creates a reward tx for any farmer instance and calculates the fee
-   return Tx.createRewardTx(receiver, previousBlock, immutableCost)
+   return Tx.createRewardTx(receiver, immutableCost)
   }
 
   public async createCreditTx(sender: string, receiver: string, amount: number) {
@@ -1255,14 +1256,13 @@ export class Tx {
 
   // static methods
 
-  static createRewardTx(receiver: string, previousBlock: string, immutableCost: number) {
+  static createRewardTx(receiver: string, immutableCost: number) {
     // create and return new reward tx for farmer who solved the block challenge
 
     const value: Tx['value'] = {
       type: 'reward',
       sender: null,
       receiver: receiver,
-      previousBlock,
       amount: 100,
       cost: null,
       signature: null
