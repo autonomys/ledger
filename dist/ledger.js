@@ -209,7 +209,7 @@ class Ledger extends events_1.EventEmitter {
         // apply and emit the block 
         await this.applyBlock(blockRecord);
     }
-    computeSolution(block, previousBlock) {
+    computeSolution(block, previousBlock, maxDelay) {
         // called once a new block round starts
         // create a dummy block to compute solution and delay
         const solution = block.getBestSolution(this.wallet.profile.proof.plot, previousBlock);
@@ -480,7 +480,7 @@ class Ledger extends events_1.EventEmitter {
         // is this a new block?
         if (this.validBlocks.includes(record.key) || this.invalidBlocks.includes(record.key) || this.chain.includes(record.key)) {
             return {
-                valid: false,
+                valid: true,
                 reason: 'already have block'
             };
         }
@@ -644,10 +644,6 @@ class Ledger extends events_1.EventEmitter {
         // getting all the records for the block storage contract
         // getting the size of the block storage contract by computing size of each tx 
         // compile the farmer rewards and add to their balance
-        // block -> no : simply don't include
-        // reward tx -> no : create this way
-        // contract tx -> no : create this way
-        // every other tx, yes 
         let blockStorageFees = 0;
         let blockSpaceReserved = block.getSize();
         const recordIds = new Set([block.key]);
@@ -1100,7 +1096,6 @@ class Tx {
         };
         const tx = new Tx(value);
         tx.setCost(immutableCost, multiplier);
-        await tx.sign(privateKeyObject);
         return tx;
     }
     static async createMutableContractTx(sender, cost, spaceReserved, replicationFactor, ttl, contractSig, contractId, immutableCost, privateKeyObject) {

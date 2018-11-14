@@ -245,7 +245,7 @@ export class Ledger extends EventEmitter {
     await this.applyBlock(blockRecord)
   }
 
-  private computeSolution(block: Block, previousBlock: string) {
+  public computeSolution(block: Block, previousBlock: string, maxDelay?: number) {
     // called once a new block round starts
     // create a dummy block to compute solution and delay
     const solution = block.getBestSolution(this.wallet.profile.proof.plot, previousBlock)
@@ -570,7 +570,7 @@ export class Ledger extends EventEmitter {
     // is this a new block?
     if (this.validBlocks.includes(record.key) || this.invalidBlocks.includes(record.key) || this.chain.includes(record.key)) {
       return {
-        valid: false,
+        valid: true,
         reason: 'already have block'
       }
     }
@@ -737,7 +737,6 @@ export class Ledger extends EventEmitter {
       oldImmutableCost = block.value.content.immutableCost
     }
     
-
     // reset all pending values back to cleared (rewind pending UTXO back to last block)
     this.pendingSpacePledged = this.clearedSpacePledged 
     this.pendingMutableReserved = this.clearedMutableReserved
@@ -757,10 +756,6 @@ export class Ledger extends EventEmitter {
       // getting all the records for the block storage contract
       // getting the size of the block storage contract by computing size of each tx 
       // compile the farmer rewards and add to their balance
-        // block -> no : simply don't include
-        // reward tx -> no : create this way
-        // contract tx -> no : create this way
-        // every other tx, yes 
 
     let blockStorageFees = 0
     let blockSpaceReserved = block.getSize()
@@ -805,8 +800,6 @@ export class Ledger extends EventEmitter {
       this.validTxs.set(contractRecord.key, JSON.parse(JSON.stringify(contractRecord.value)))
     }
     
-    
-
     // reset cleared balances back to pending (fast-forward cleared utxo to this block)
     this.clearedSpacePledged = this.pendingSpacePledged
     this.clearedMutableReserved = this.pendingMutableReserved
@@ -1354,7 +1347,6 @@ export class Tx {
 
     const tx = new Tx(value)
     tx.setCost(immutableCost, multiplier)
-    await tx.sign(privateKeyObject)
     return tx
   }
 
