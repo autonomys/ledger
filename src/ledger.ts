@@ -3,6 +3,7 @@ import * as crypto from '@subspace/crypto'
 import { getClosestIdByXor } from '@subspace/utils'
 import { Record, IValue } from '@subspace/database'
 import { EventEmitter } from 'events'
+import { key } from 'openpgp';
 
 // Design Notes
 
@@ -157,11 +158,11 @@ export class Ledger extends EventEmitter {
       return true
     }
     const source = Buffer.from(challenge)
-    const contender = Buffer.from(bestSolution)
+    const incumbent = Buffer.from(bestSolution)
     const challenger = Buffer.from(solution)
-    const targets = [contender, challenger]
+    const targets = [incumbent, challenger]
     const closest = getClosestIdByXor(source, targets)
-    return contender === closest
+    return challenger === closest
   }
 
   public getBalance(address: string) {
@@ -297,7 +298,7 @@ export class Ledger extends EventEmitter {
 
     // add to valid tx mempool 
     this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
-
+    // block.value.txSet.add(rewardRecord.key)
     block.addRewardTx(rewardRecord)
     
     // add all valid tx's in the mempool into the tx set 
@@ -610,6 +611,8 @@ export class Ledger extends EventEmitter {
     const rewardTx = this.createRewardTx(crypto.getHash(block.value.publicKey), previousBlock.value.immutableCost)
     const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
     await rewardRecord.unpack(profile.privateKeyObject)
+
+
     this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
 
     // later, validate there is only one reward tx and one block storage tx per block
@@ -647,6 +650,7 @@ export class Ledger extends EventEmitter {
         }
       } else if (tx.type === 'reward') {
         creditSupply += tx.amount
+        this.validTxs.delete(txId)
       }
     }
 
@@ -675,6 +679,14 @@ export class Ledger extends EventEmitter {
     if (this.isBestBlockSolution(block.value.solution)) {
       this.validBlocks.unshift(record.key)
       this.pendingBlocks.set(record.key, JSON.parse(JSON.stringify(record.value)))
+
+      // remove the existing reward tx 
+      for (const [key, value] of this.validTxs) {
+        if (value.content.type === 'reward' && value.content.receiver !== block.value.publicKey ) {
+          this.validTxs.delete(key)
+        }
+      }
+
     } else {
       this.validBlocks.push(record.key)
     }

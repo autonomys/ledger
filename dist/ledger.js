@@ -135,11 +135,11 @@ class Ledger extends events_1.EventEmitter {
             return true;
         }
         const source = Buffer.from(challenge);
-        const contender = Buffer.from(bestSolution);
+        const incumbent = Buffer.from(bestSolution);
         const challenger = Buffer.from(solution);
-        const targets = [contender, challenger];
+        const targets = [incumbent, challenger];
         const closest = utils_1.getClosestIdByXor(source, targets);
-        return contender === closest;
+        return challenger === closest;
     }
     getBalance(address) {
         // get the current UTXO balance for an address
@@ -254,6 +254,7 @@ class Ledger extends events_1.EventEmitter {
         await rewardRecord.unpack(profile.privateKeyObject);
         // add to valid tx mempool 
         this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)));
+        // block.value.txSet.add(rewardRecord.key)
         block.addRewardTx(rewardRecord);
         // add all valid tx's in the mempool into the tx set 
         for (const [txId] of this.validTxs) {
@@ -551,6 +552,7 @@ class Ledger extends events_1.EventEmitter {
             }
             else if (tx.type === 'reward') {
                 creditSupply += tx.amount;
+                this.validTxs.delete(txId);
             }
         }
         // recalculate available space and costs
@@ -575,6 +577,12 @@ class Ledger extends events_1.EventEmitter {
         if (this.isBestBlockSolution(block.value.solution)) {
             this.validBlocks.unshift(record.key);
             this.pendingBlocks.set(record.key, JSON.parse(JSON.stringify(record.value)));
+            // remove the existing reward tx 
+            for (const [key, value] of this.validTxs) {
+                if (value.content.type === 'reward' && value.content.receiver !== block.value.publicKey) {
+                    this.validTxs.delete(key);
+                }
+            }
         }
         else {
             this.validBlocks.push(record.key);
