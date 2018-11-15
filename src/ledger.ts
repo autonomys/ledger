@@ -153,10 +153,12 @@ export class Ledger extends EventEmitter {
   private isBestBlockSolution(solution: string) {
     // check to see if a given solution is the best solution for the curernt challenge
     const challenge = this.chain[this.chain.length - 1]
-    const bestSolution = this.validBlocks[0]
-    if (!bestSolution) {
+    const bestBlockId = this.validBlocks[0]
+    if (!bestBlockId) {
       return true
-    }
+    } 
+    const bestBlockValue = this.pendingBlocks.get(bestBlockId)
+    const bestSolution = bestBlockValue.content.solution
     const source = Buffer.from(challenge)
     const incumbent = Buffer.from(bestSolution)
     const challenger = Buffer.from(solution)
