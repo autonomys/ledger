@@ -329,7 +329,7 @@ export class Ledger extends EventEmitter {
 
     if (this.validTxs.has(record.key) || this.invalidTxs.has(record.key)) {
       return {
-        valid: false,
+        valid: true,
         reason: 'already have tx'
       }
     }
@@ -614,10 +614,6 @@ export class Ledger extends EventEmitter {
 
     // later, validate there is only one reward tx and one block storage tx per block
 
-    // have to add the reward tx for this block
-    // and the 
-
-
     for (const txId of block.value.txSet) {
       // check if in the memPool map
       if (! this.validTxs.has(txId)) {
@@ -796,9 +792,7 @@ export class Ledger extends EventEmitter {
     const contractTx = await this.createImmutableContractTx(null, oldImmutableCost, this.pendingBalances.get(NEXUS_ADDRESS), blockSpaceReserved, recordIds, profile.privateKeyObject)
     const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
     await contractRecord.unpack(profile.privateKeyObject)
-    if (this.hasLedger) {
-      this.validTxs.set(contractRecord.key, JSON.parse(JSON.stringify(contractRecord.value)))
-    }
+    this.validTxs.set(contractRecord.key, JSON.parse(JSON.stringify(contractRecord.value)))
     
     // reset cleared balances back to pending (fast-forward cleared utxo to this block)
     this.clearedSpacePledged = this.pendingSpacePledged
