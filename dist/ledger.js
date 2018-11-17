@@ -723,6 +723,7 @@ class Ledger extends events_1.EventEmitter {
                 throw new Error('Invalid tx');
             }
         }
+        this.emit('applied-block', block);
         if (this.isFarming) {
             const blockValue = new Block(block.value.content);
             this.computeSolution(blockValue, block.key);

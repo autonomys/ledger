@@ -847,6 +847,8 @@ export class Ledger extends EventEmitter {
       }
     }
 
+    this.emit('applied-block', block)
+
     if (this.isFarming) {
       const blockValue = new Block(block.value.content)
       this.computeSolution(blockValue, block.key)
