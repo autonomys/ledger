@@ -340,9 +340,11 @@ class Ledger extends events_1.EventEmitter {
                 // pay tx cost to the nexus
                 nexusBalance = this.pendingBalances.get(NEXUS_ADDRESS);
                 nexusBalance += txStorageCost;
+                this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance);
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
                 farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
                 farmerBalance += txFee;
+                this.pendingBalances.set(FARMER_ADDRESS, farmerBalance);
                 break;
             case ('pledge'):
                 // add the pledge to pledges
@@ -367,6 +369,7 @@ class Ledger extends events_1.EventEmitter {
                 nexusBalance -= tx.value.cost;
                 // pay tx fees to back to the nexus
                 nexusBalance += tx.value.cost;
+                this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance);
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
                 // removed for now, since nexus is getting full fee
                 // farmerBalance = this.balances.get(FARMER_ADDRESS)
@@ -413,6 +416,7 @@ class Ledger extends events_1.EventEmitter {
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
                 farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
                 farmerBalance += txFee;
+                this.pendingBalances.set(FARMER_ADDRESS, farmerBalance);
                 break;
             case ('nexus'):
                 // nexus originaly paid tx cost for pledge
@@ -448,6 +452,7 @@ class Ledger extends events_1.EventEmitter {
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
                 farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
                 farmerBalance += txFee;
+                this.pendingBalances.set(FARMER_ADDRESS, farmerBalance);
                 break;
             case ('reward'):
                 // credit the winner and deduct tx fees
@@ -1033,7 +1038,7 @@ class Tx {
             signature: null
         };
         const tx = new Tx(value);
-        tx.setCost(immutableCost, 1);
+        tx.setCost(immutableCost, 2);
         return tx;
     }
     static async createCreditTx(sender, receiver, amount, immutableCost, privateKeyObject) {
@@ -1047,7 +1052,7 @@ class Tx {
             signature: null
         };
         const tx = new Tx(value);
-        tx.setCost(immutableCost);
+        tx.setCost(immutableCost, 2);
         await tx.sign(privateKeyObject);
         return tx;
     }
@@ -1066,7 +1071,7 @@ class Tx {
             signature: null
         };
         const tx = new Tx(value);
-        tx.setCost(immutableCost);
+        tx.setCost(immutableCost, 2);
         await tx.sign(privateKeyObject);
         return tx;
     }
@@ -1083,7 +1088,7 @@ class Tx {
             signature: null
         };
         const tx = new Tx(value);
-        tx.setCost(immutableCost);
+        tx.setCost(immutableCost, 2);
         return tx;
     }
     static async createImmutableContractTx(sender, cost, spaceReserved, records, immutableCost, multiplier, privateKeyObject) {
@@ -1120,7 +1125,7 @@ class Tx {
             signature: null
         };
         const tx = new Tx(value);
-        tx.setCost(immutableCost);
+        tx.setCost(immutableCost, 2);
         await tx.sign(privateKeyObject);
         return tx;
     }
@@ -1164,6 +1169,8 @@ class Tx {
                 break;
             case ('reward'):
                 response = this.isValidRewardTx(response);
+                break;
+            case ('credit'):
                 break;
             default:
                 throw new Error('invalid tx type, cannot validate');

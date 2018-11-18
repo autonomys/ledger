@@ -404,10 +404,12 @@ export class Ledger extends EventEmitter {
         // pay tx cost to the nexus
         nexusBalance = this.pendingBalances.get(NEXUS_ADDRESS)
         nexusBalance += txStorageCost
+        this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance)
 
         // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
         farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
         farmerBalance += txFee 
+        this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
         break
       case('pledge'):
         // add the pledge to pledges
@@ -438,6 +440,7 @@ export class Ledger extends EventEmitter {
 
           // pay tx fees to back to the nexus
           nexusBalance += tx.value.cost
+          this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance)
 
           // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
           // removed for now, since nexus is getting full fee
@@ -492,6 +495,7 @@ export class Ledger extends EventEmitter {
         // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
         farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
         farmerBalance += txFee
+        this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
         break
       case('nexus'):
         // nexus originaly paid tx cost for pledge
@@ -532,6 +536,7 @@ export class Ledger extends EventEmitter {
         // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
         farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
         farmerBalance += txFee
+        this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
         break
       case('reward'):
         // credit the winner and deduct tx fees
@@ -1274,7 +1279,7 @@ export class Tx {
     }
 
     const tx = new Tx(value)
-    tx.setCost(immutableCost, 1)
+    tx.setCost(immutableCost, 2)
     return tx
   }
 
@@ -1291,7 +1296,7 @@ export class Tx {
     }
 
     const tx = new Tx(value)
-    tx.setCost(immutableCost)
+    tx.setCost(immutableCost, 2)
     await tx.sign(privateKeyObject)
     return tx
   }
@@ -1313,7 +1318,7 @@ export class Tx {
     }
 
     const tx = new Tx(value)
-    tx.setCost(immutableCost)
+    tx.setCost(immutableCost, 2)
     await tx.sign(privateKeyObject)
     return tx
   }
@@ -1334,7 +1339,7 @@ export class Tx {
     }
 
     const tx = new Tx(value)
-    tx.setCost(immutableCost)
+    tx.setCost(immutableCost, 2)
     return tx
   }
 
@@ -1377,7 +1382,7 @@ export class Tx {
     }
 
     const tx = new Tx(value)
-    tx.setCost(immutableCost)
+    tx.setCost(immutableCost, 2)
     await tx.sign(privateKeyObject)
     return tx
   }
@@ -1427,6 +1432,8 @@ export class Tx {
         break
       case('reward'): 
         response = this.isValidRewardTx(response)
+        break
+      case('credit'):
         break
       default: 
         throw new Error('invalid tx type, cannot validate')
