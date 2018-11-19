@@ -60,7 +60,6 @@ export declare class Ledger extends EventEmitter {
         reason: string;
     }>;
     applyBlock(block: Record): Promise<void>;
-    createRewardTx(receiver: string, immutableCost: number): Tx;
     createCreditTx(sender: string, receiver: string, amount: number): Promise<Record>;
     createPledgeTx(sender: string, proof: string, spacePledged: number, interval?: number, immutableCost?: number): Promise<Record>;
     createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number): Promise<Record>;
@@ -81,6 +80,7 @@ export declare class Block {
         solution: string;
         pledge: number;
         publicKey: string;
+        reward: number;
         signature: string;
     };
     constructor(_value: Block['value']);
@@ -97,13 +97,13 @@ export declare class Block {
         solution: string;
         pledge: number;
         publicKey: string;
+        reward: number;
         signature: string;
     };
     static create(blockData: Block['value']): Promise<Block>;
     addTx(tx: string): void;
     setImmutableCost(cost: number): void;
     setMutableCost(cost: number): void;
-    addRewardTx(rewardRecord: Record): void;
     addPledgeTx(pledgeRecord: Record): void;
     isValidGenesisBlock(block: Record): Promise<{
         valid: boolean;
@@ -164,7 +164,6 @@ export declare class Tx {
         contractSig?: string;
         contractId?: string;
     };
-    static createRewardTx(receiver: string, immutableCost: number): Tx;
     static createCreditTx(sender: string, receiver: string, amount: number, immutableCost: number, privateKeyObject: any): Promise<Tx>;
     static createPledgeTx(proof: string, spacePledged: number, interval: number, immutableCost: number, privateKeyObject: any, publicKey: string): Promise<Tx>;
     static createNexusTx(sender: string, amount: number, pledgeTx: string, immutableCost: number): Tx;
@@ -177,7 +176,6 @@ export declare class Tx {
     isValidPledgeTx(response: any): any;
     isValidContractTx(response: any, hostCount: number, mutableCost: number, immutableCost: number): Promise<any>;
     isValidNexusTx(response: any): any;
-    isValidRewardTx(response: any): any;
     getCost(immutableCost: number, incentiveMultiplier: number): number;
     isValidSignature(): Promise<boolean>;
     private setCost;
