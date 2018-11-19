@@ -173,7 +173,7 @@ class Ledger extends events_1.EventEmitter {
             mutableReserved: 0,
             immutableCost: 0,
             mutableCost: 0,
-            creditSupply: 0,
+            creditSupply: 100,
             hostCount: 1,
             solution: null,
             pledge: spacePledged,
