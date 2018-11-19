@@ -218,15 +218,6 @@ export class Ledger extends EventEmitter {
     block.setMutableCost(this.computeMutableCost(100, blockData.pledge))
     block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
 
-    // create the reward tx and record, add to tx set
-    // const receiver = crypto.getHash(profile.publicKey)
-    // const rewardTx = this.createRewardTx(receiver, blockData.immutableCost)
-    // const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
-    // await rewardRecord.unpack(profile.privatKeyObject)
-    // block.addRewardTx(rewardRecord)
-    // block.value.txSet.add(rewardRecord.key)
-    // this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
-
     // create the pledge tx and record, add to tx set
     const pledgeRecord = await this.createPledgeTx(profile.publicKey, this.wallet.profile.proof.id, spacePledged, pledgeInterval, blockData.immutableCost)
     block.addPledgeTx(pledgeRecord)
@@ -240,12 +231,11 @@ export class Ledger extends EventEmitter {
       pledgeTx: pledgeRecord.key
     }
 
-    // create the block, sign and convert to a record
+    // create the block, sign and convert to a record, emit and apply
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
     this.emit('block-solution', JSON.parse(JSON.stringify(blockRecord)))
     await blockRecord.unpack(profile.privateKeyObject)
-    // apply and emit the block 
     await this.applyBlock(blockRecord)
   }
 
@@ -283,7 +273,7 @@ export class Ledger extends EventEmitter {
       mutableReserved: this.pendingMutableReserved,
       immutableCost: null,
       mutableCost: null,
-      creditSupply: this.pendingCreditSupply,
+      creditSupply: this.pendingCreditSupply + 100,
       hostCount: this.pendingHostCount,
       solution: null,
       pledge: this.wallet.profile.proof.size,
@@ -294,16 +284,6 @@ export class Ledger extends EventEmitter {
     }
 
     const block = await Block.create(blockData)
-
-    // create the reward tx for the next block and add to tx set, add to valid txs at applyBlock
-    // const rewardTx = this.createRewardTx(crypto.getHash(profile.publicKey), this.clearedImmutableCost)
-    // const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
-    // await rewardRecord.unpack(profile.privateKeyObject)
-
-    // // add to valid tx mempool 
-    // this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
-    // // block.value.txSet.add(rewardRecord.key)
-    // block.addRewardTx(rewardRecord)
     
     // add all valid tx's in the mempool into the tx set 
     for (const [txId] of this.validTxs) {
@@ -346,11 +326,6 @@ export class Ledger extends EventEmitter {
       senderBalance = this.getBalance(crypto.getHash(tx.value.sender))
     }
     const txTest = await tx.isValid(record.getSize(), this.clearedMutableCost, this.clearedImmutableCost, senderBalance, this.clearedHostCount)
-
-    // ensure extra reward tx are not being created
-    // if (tx.value.type === 'reward') {
-    //   throw new Error('Invalid tx, reward txs are not gossiped')
-    // }
 
     // ensure extras storage contracts are not being created
     if (tx.value.type === 'contract' && tx.value.sender === NEXUS_ADDRESS) {
@@ -407,11 +382,6 @@ export class Ledger extends EventEmitter {
         nexusBalance = this.pendingBalances.get(NEXUS_ADDRESS)
         nexusBalance += txStorageCost
         this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance)
-
-        // // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-        // farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
-        // farmerBalance += txFee 
-        // this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
         break
       case('pledge'):
         // add the pledge to pledges
@@ -431,11 +401,6 @@ export class Ledger extends EventEmitter {
           // adjust host count
           this.pendingHostCount += 1
 
-          // seperate tx fee from base storage cost
-          // removed for now, since nexus is getting full fee
-          // txCost = tx.getCost(this.oldImmutableCost, 1)
-          // txFee = tx.value.cost - txCost
-
           // deduct tx fees from the nexus
           nexusBalance = this.pendingBalances.get(NEXUS_ADDRESS)
           nexusBalance -= tx.value.cost
@@ -443,11 +408,6 @@ export class Ledger extends EventEmitter {
           // pay tx fees to back to the nexus
           nexusBalance += tx.value.cost
           this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance)
-
-          // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-          // removed for now, since nexus is getting full fee
-          // farmerBalance = this.balances.get(FARMER_ADDRESS)
-          // farmerBalance += txFee
           break
       case('contract'):
         // have to ensure the farmer does not apply a tx fee to the block storage payment 
@@ -493,11 +453,6 @@ export class Ledger extends EventEmitter {
         let reserverBalance = this.pendingBalances.get(reserverAddress)
         reserverBalance -= tx.value.amount
         this.pendingBalances.set(reserverAddress, reserverBalance)
-
-        // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-        // farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
-        // farmerBalance += txFee
-        // this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
         break
       case('nexus'):
         // nexus originaly paid tx cost for pledge
@@ -534,46 +489,14 @@ export class Ledger extends EventEmitter {
         } else {
           this.pendingBalances.set(tx.value.receiver, tx.value.amount)
         }
-
-        // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-        // farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
-        // farmerBalance += txFee
-        // this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
         break
-      // case('reward'):
-      //   // credit the winner and deduct tx fees
-
-      //   // seperate tx fee from base storage cost
-      //   // keep in for now, eventually remove tx fee from farmer reward payment
-      //   txStorageCost = tx.getCost(this.clearedImmutableCost, 1)
-      //   txFee = tx.value.cost - txStorageCost
-
-      //   if (this.pendingBalances.has(tx.value.receiver)) {
-      //     let receiverBalance = this.pendingBalances.get(tx.value.receiver)
-      //     receiverBalance += tx.value.amount - tx.value.cost
-      //     this.pendingBalances.set(tx.value.receiver, receiverBalance)
-      //   } else {
-      //     this.pendingBalances.set(tx.value.receiver, tx.value.amount - tx.value.cost)
-      //   }
-        
-      //   // update the credit supply
-      //   this.pendingCreditSupply += tx.value.amount
-
-      //   // pay tx fees to the nexus
-      //   nexusBalance = this.pendingBalances.get(NEXUS_ADDRESS)
-      //   nexusBalance += txStorageCost
-
-      //   // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-      //   farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
-      //   farmerBalance += txFee
-      //   break
       default:
         throw new Error('Unkown tx type')
     }  
   }
   
   async onBlock(record: Record) {
-    // called from core when a new block is received via gossip
+    // called from core when a new block is received via gossip or when a pending block is retrieved 
     // validates the block and checks if best solution before adding to blocks
     // wait until the block interval expires before applying the block
 
@@ -585,15 +508,10 @@ export class Ledger extends EventEmitter {
       }
     }
 
+    // create the block
     const block = new Block(record.value.content)
   
-    // fetch the last block header to compare
-    // new blocks are being gossiped before the current block has been applied 
-    // block 1 -> gossiped 
-      // block interval elapses
-        // block is validated and applied 
-        // fetch block 0 to compare (cleared)
-    
+    // fetch the last block header to compare    
     const previousBlockKey = this.chain[this.chain.length - 1]
     const previousBlockRecordValue = this.clearedBlocks.get(previousBlockKey)
     const previousBlock = {
@@ -613,16 +531,6 @@ export class Ledger extends EventEmitter {
     let immutableReserved = previousBlock.value.immutableReserved 
     let mutableReserved = previousBlock.value.mutableReserved
     let hostCount = previousBlock.value.hostCount
-    // let creditSupply = previousBlock.value.creditSupply
-
-    // create the reward tx 
-    // const profile = this.wallet.getProfile()
-    // const rewardTx = this.createRewardTx(crypto.getHash(block.value.publicKey), previousBlock.value.immutableCost)
-    // const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
-    // await rewardRecord.unpack(profile.privateKeyObject)
-
-
-    // this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
 
     // later, validate there is only one reward tx and one block storage tx per block
 
@@ -658,15 +566,10 @@ export class Ledger extends EventEmitter {
           immutableReserved += tx.spaceReserved
         }
       } 
-      // else if (tx.type === 'reward') {
-      //   creditSupply += tx.amount
-      //   // this.validTxs.delete(txId)
-
-      // }
     }
 
     // recalculate available space and costs
-    const creditSupply = previousBlock.value.content.creditSupply + block.value.reward
+    const creditSupply = previousBlock.value.creditSupply + block.value.reward
     const spaceAvailable = spacePledged - mutableReserved - immutableReserved
     const mutableCost = this.computeMutableCost(creditSupply, spaceAvailable)
     const immutableCost = this.computeImmutableCost(mutableCost, mutableReserved, immutableReserved)
@@ -691,14 +594,6 @@ export class Ledger extends EventEmitter {
     if (this.isBestBlockSolution(block.value.solution)) {
       this.validBlocks.unshift(record.key)
       this.pendingBlocks.set(record.key, JSON.parse(JSON.stringify(record.value)))
-
-      // if existing reward tx for less valid block, remove it
-      // for (const [key, value] of this.validTxs) {
-      //   if (value.content.type === 'reward' && value.content.receiver !== block.value.publicKey ) {
-      //     this.validTxs.delete(key)
-      //   }
-      // }
-
     } else {
       this.validBlocks.push(record.key)
     }
@@ -716,24 +611,6 @@ export class Ledger extends EventEmitter {
     // create a reward tx for this block and add to valid tx's 
     const profile = this.wallet.getProfile()
 
-    // have to handle reward for genesis block (no immutable cost at that point)
-
-    // create the reward tx for this block and add to mempool
-    // const receiver = crypto.getHash(block.value.content.publicKey)
-    // let immutableCost: number = null
-    //     if (block.value.content.previousBlock) {
-    //       immutableCost = this.clearedImmutableCost
-    //     } else {
-    //       immutableCost = block.value.content.immutableCost
-    //     }
-    // const rewardTx = this.createRewardTx(receiver, immutableCost)
-    // const rewardRecord = await Record.createImmutable(rewardTx.value, false, profile.publicKey, false)
-    // await rewardRecord.unpack(profile.privateKeyObject)
-
-    // if (!this.validTxs.has(rewardRecord.key)) {
-    //   this.validTxs.set(rewardRecord.key, JSON.parse(JSON.stringify(rewardRecord.value)))
-    // }
-    
     // save the block and add to cleared blocks, flush the pending blocks 
     // await rewardRecord.pack(profile.publicKey)
     await this.storage.put(block.key, JSON.stringify(block.value))
@@ -884,11 +761,6 @@ export class Ledger extends EventEmitter {
     }
   }
 
-  // public createRewardTx(receiver: string, immutableCost: number) {
-  //   // creates a reward tx for any farmer instance and calculates the fee
-  //  return Tx.createRewardTx(receiver, immutableCost)
-  // }
-
   public async createCreditTx(sender: string, receiver: string, amount: number) {
     // creates a credit tx instance and calculates the fee
     const profile = this.wallet.getProfile()
@@ -1019,12 +891,7 @@ export class Block {
   public setMutableCost(cost: number) {
     this._value.mutableCost = cost
   }
-
-  // public addRewardTx(rewardRecord: Record) {
-  //   this._value.creditSupply += rewardRecord.value.content.amount
-  //   // this._value.txSet.add(rewardRecord.key)
-  // }
-
+  
   public addPledgeTx(pledgeRecord: Record) {
     this._value.spacePledged += pledgeRecord.value.content.spacePledged
     this._value.txSet.add(pledgeRecord.key)
@@ -1286,24 +1153,6 @@ export class Tx {
   }
 
   // static methods
-
-  // static createRewardTx(receiver: string, immutableCost: number) {
-  //   // create and return new reward tx for farmer who solved the block challenge
-
-  //   const value: Tx['value'] = {
-  //     type: 'reward',
-  //     sender: null,
-  //     receiver: receiver,
-  //     amount: 100,
-  //     cost: null,
-  //     signature: null
-  //   }
-
-  //   const tx = new Tx(value)
-  //   tx.setCost(immutableCost, 2)
-  //   return tx
-  // }
-
   static async createCreditTx(sender: string, receiver: string, amount: number, immutableCost: number, privateKeyObject: any) {
     // create and return a new credit tx, sends credits between two addresses
 
@@ -1567,27 +1416,6 @@ export class Tx {
     return response
   }
 
-  // public isValidRewardTx(response: any) {
-  //   // has null sender
-  //   if(this._value.sender !== null) {
-  //     response.reason = 'invalid reward tx, sender is not null'
-  //     return response
-  //   }
-
-  //   // is less than or equal to 100 credits
-  //   if(this._value.amount !== INITIAL_BLOCK_REWARD) {
-  //     response.reason = 'invalid reward tx, invalid reward amount'
-  //     return response
-  //   }
-
-  //   // is the block creator, how to know?
-  //   // have to validate at block validation 
-  //   // must ensure there are not additional reward tx placed insed the block tx set 
-
-  //   response.valid = true
-  //   return response
-  // }
-
   public getCost(immutableCost: number, incentiveMultiplier: number) {
     // we have to carefully extrapolate the size since fee is based on size
     // we know the base record size and that each integer for amount and fee is one byte
@@ -1653,53 +1481,3 @@ export class Tx {
     
 }
 
-// Block 0
-  // reward tx
-    // no inputs
-    // 1 output of 100 credits to farmer
-  // pledge tx: Tx_cost
-    // no inputs
-    // 1 output of tx_cost to nexus (how do you calculate tx cost?)
-  // block header
-// Block 1
-  // reward tx: 100 credits
-    // no inputs
-    // 100 credits output to farmer 
-  // contract tx: Cost(block 0): nexus -> nexus 
-    // 1 input of block cost from nexus (for each)
-      // based on cost of storage in the last block
-      // must reference each tx output (to the nexus) specificially that was paid by the node who created each tx in the previous block 
-      // will this make the contract as big the txSet of the last block?
-      // does the full contract need to be sent with the block or just the hash?
-      // is the contract in any way specific to the farmer who creates the block?
-      // or could the contract be created by the previous farmer and sent out immediately after the next block is published?
-      // if there is seperate contract state then it would need to be signed by somebody for authenticity , either the farmer who created the block the contract refers to, or the farmer who creates the block that the tx will be embedded in
-      // What would other nodes need to verify?
-      // If it were constructed in such a way that any node could create the contract tx locally, then simply verify that the hash is included in the next block, that might work ...
-    // 1 single output of block cost to nexus
-    // takes all inputs into the nexus from last block and converts into a single output
-  // block header
-// Block 2
-  // reward tx
-    // inputs 
-      // 1 input for each tx as the tx fee, difference between tx amount and cost of storage
-    // outputs
-      // 100 credits to farmer (reward) plus sum of all tx fees
-  // contract tx (block 1)
-    // 1 input for each tx in previous block (specific input to nexus for tx cost)
-    // 1 single output back to nexus
-  // nexus payment tx ()
-    // inputs
-      // 1 input from nexus to cover tx cost
-    // outputs 
-      // 1 output back to nexus for original pledge cost and this tx cost
-      // 1 output to host for remainder
-      // 1 output to farmer for tx fee
-  // credit tx
-    // inputs
-      // 1 input from sender
-    // outputs
-      // 1 output to nexus for storage cost
-      // 1 output to farmer for tx fee
-      // 1 output to recipient for amount
-  // block header
