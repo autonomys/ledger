@@ -48,7 +48,7 @@ const BASE_CONTRACT_TX_RECORD_SIZE = 2381;
 const BASE_NEXUS_TX_RECORD_SIZE = 509;
 const BASE_REWARD_TX_RECORD_SIZE = 502;
 const NEXUS_ADDRESS = crypto.getHash('nexus');
-const FARMER_ADDRESS = crypto.getHash('farmer');
+// const FARMER_ADDRESS = crypto.getHash('farmer')
 const TX_FEE_MULTIPLIER = 1.02;
 class Ledger extends events_1.EventEmitter {
     constructor(storage, wallet) {
@@ -82,7 +82,7 @@ class Ledger extends events_1.EventEmitter {
         this.isFarming = false;
         this.hasLedger = false;
         this.clearedBalances.set(NEXUS_ADDRESS, 10000);
-        this.clearedBalances.set(FARMER_ADDRESS, 0);
+        // this.clearedBalances.set(FARMER_ADDRESS, 0)
     }
     static getMutableCost(creditSupply, spaceAvailable) {
         const ledger = new Ledger(null, null);
@@ -343,10 +343,10 @@ class Ledger extends events_1.EventEmitter {
                 nexusBalance = this.pendingBalances.get(NEXUS_ADDRESS);
                 nexusBalance += txStorageCost;
                 this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance);
-                // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-                farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
-                farmerBalance += txFee;
-                this.pendingBalances.set(FARMER_ADDRESS, farmerBalance);
+                // // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
+                // farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
+                // farmerBalance += txFee 
+                // this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
                 break;
             case ('pledge'):
                 // add the pledge to pledges
@@ -416,9 +416,9 @@ class Ledger extends events_1.EventEmitter {
                 reserverBalance -= tx.value.amount;
                 this.pendingBalances.set(reserverAddress, reserverBalance);
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-                farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
-                farmerBalance += txFee;
-                this.pendingBalances.set(FARMER_ADDRESS, farmerBalance);
+                // farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
+                // farmerBalance += txFee
+                // this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
                 break;
             case ('nexus'):
                 // nexus originaly paid tx cost for pledge
@@ -452,9 +452,9 @@ class Ledger extends events_1.EventEmitter {
                     this.pendingBalances.set(tx.value.receiver, tx.value.amount);
                 }
                 // pay tx fee to the farmer, but we don't know who the farmer is yet ... 
-                farmerBalance = this.pendingBalances.get(FARMER_ADDRESS);
-                farmerBalance += txFee;
-                this.pendingBalances.set(FARMER_ADDRESS, farmerBalance);
+                // farmerBalance = this.pendingBalances.get(FARMER_ADDRESS)
+                // farmerBalance += txFee
+                // this.pendingBalances.set(FARMER_ADDRESS, farmerBalance)
                 break;
             // case('reward'):
             //   // credit the winner and deduct tx fees
@@ -686,6 +686,8 @@ class Ledger extends events_1.EventEmitter {
         // add storage fees and reward to farmer balance 
         const farmerAddress = crypto.getHash(block.value.content.publicKey);
         let farmerBalance = this.pendingBalances.get(farmerAddress);
+        if (!farmerBalance)
+            farmerBalance = 0;
         farmerBalance += block.value.content.reward + blockStorageFees;
         this.pendingBalances.set(farmerAddress, farmerBalance);
         // recalculate mutable and immutable cost
