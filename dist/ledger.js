@@ -681,11 +681,13 @@ class Ledger extends events_1.EventEmitter {
             this.storage.put(txId, JSON.stringify(txRecord.value));
             this.validTxs.delete(txId);
         }
-        // add storage fees to farmer balance 
-        const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.content.publicKey));
-        this.pendingBalances.set(crypto.getHash(block.value.content.publicKey), farmerBalance + blockStorageFees);
         // increase the credit supply
         this.pendingCreditSupply += block.value.content.reward;
+        // add storage fees and reward to farmer balance 
+        const farmerAddress = crypto.getHash(block.value.content.publicKey);
+        let farmerBalance = this.pendingBalances.get(farmerAddress);
+        farmerBalance += block.value.content.reward + blockStorageFees;
+        this.pendingBalances.set(farmerAddress, farmerBalance);
         // recalculate mutable and immutable cost
         this.pendingMutableCost = this.computeMutableCost(this.pendingCreditSupply, this.pendingSpaceAvailable);
         this.pendingImmutableCost = this.computeImmutableCost(this.pendingMutableCost, this.pendingImmutableReserved, this.pendingMutableReserved);

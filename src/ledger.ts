@@ -804,12 +804,14 @@ export class Ledger extends EventEmitter {
       this.validTxs.delete(txId)
     }
 
-    // add storage fees to farmer balance 
-    const farmerBalance = this.pendingBalances.get(crypto.getHash(block.value.content.publicKey))
-    this.pendingBalances.set(crypto.getHash(block.value.content.publicKey), farmerBalance + blockStorageFees)
-
     // increase the credit supply
     this.pendingCreditSupply += block.value.content.reward
+
+    // add storage fees and reward to farmer balance 
+    const farmerAddress = crypto.getHash(block.value.content.publicKey)
+    let farmerBalance = this.pendingBalances.get(farmerAddress)
+    farmerBalance += block.value.content.reward + blockStorageFees
+    this.pendingBalances.set(farmerAddress, farmerBalance)
 
     // recalculate mutable and immutable cost
     this.pendingMutableCost = this.computeMutableCost(this.pendingCreditSupply, this.pendingSpaceAvailable)
@@ -820,6 +822,8 @@ export class Ledger extends EventEmitter {
     const contractRecord = await Record.createImmutable(contractTx.value, false, profile.publicKey, false)
     await contractRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(contractRecord.key, JSON.parse(JSON.stringify(contractRecord.value)))
+
+
     
     // reset cleared balances back to pending (fast-forward cleared utxo to this block)
     this.clearedSpacePledged = this.pendingSpacePledged
