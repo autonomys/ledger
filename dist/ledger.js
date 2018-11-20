@@ -633,6 +633,7 @@ class Ledger extends events_1.EventEmitter {
                 // drop the tx, client will have to create a new tx that covers tx fees
                 this.validTxs.delete(key);
                 this.invalidTxs.add(key);
+                console.log(testTx.reason);
                 throw new Error('Invalid tx');
             }
         }
@@ -962,7 +963,7 @@ class Tx {
             signature: null
         };
         const tx = new Tx(value);
-        tx.setCost(immutableCost, 2);
+        tx.setCost(immutableCost, 4);
         await tx.sign(privateKeyObject);
         return tx;
     }
