@@ -1105,7 +1105,7 @@ export class Block {
 
   public async sign(privateKeyObject: any) {
     // signs the block
-    this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject)
+    this._value.signature = await crypto.sign(this._value, privateKeyObject)
   }
 
   public async isValidSignature() {
@@ -1477,7 +1477,7 @@ export class Tx {
   }
 
   private async sign(privateKeyObject: any) {
-    this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject)
+    this._value.signature = await crypto.sign(this._value, privateKeyObject)
   }
     
 }

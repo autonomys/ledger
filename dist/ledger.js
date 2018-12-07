@@ -915,7 +915,7 @@ class Block {
     }
     async sign(privateKeyObject) {
         // signs the block
-        this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject);
+        this._value.signature = await crypto.sign(this._value, privateKeyObject);
     }
     async isValidSignature() {
         const unsignedBlock = JSON.parse(JSON.stringify(this._value));
@@ -1205,7 +1205,7 @@ class Tx {
         this._value.cost = this.getCost(immutableCost, multiplier);
     }
     async sign(privateKeyObject) {
-        this._value.signature = await crypto.sign(JSON.stringify(this._value), privateKeyObject);
+        this._value.signature = await crypto.sign(this._value, privateKeyObject);
     }
 }
 exports.Tx = Tx;
