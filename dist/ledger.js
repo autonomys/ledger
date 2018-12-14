@@ -147,6 +147,18 @@ class Ledger extends events_1.EventEmitter {
         // get the current UTXO balance for an address
         return this.pendingBalances.get(address);
     }
+    getContract(contractPublicKey) {
+        const contractId = crypto.getHash(contractPublicKey);
+        if (this.pendingContracts.has(contractId)) {
+            return JSON.parse(JSON.stringify(this.pendingContracts.get(contractId)));
+        }
+        else if (this.clearedContracts.has(contractId)) {
+            return JSON.parse(JSON.stringify(this.clearedContracts.get(contractId)));
+        }
+        else {
+            throw new Error('Cannot locate contract');
+        }
+    }
     getHeight() {
         // get the current height of the chain
         return this.chain.length - 1;

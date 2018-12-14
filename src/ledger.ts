@@ -172,6 +172,17 @@ export class Ledger extends EventEmitter {
     return this.pendingBalances.get(address)
   }
 
+  public getContract(contractPublicKey: string): IContract {
+    const contractId = crypto.getHash(contractPublicKey)
+    if (this.pendingContracts.has(contractId)) {
+      return JSON.parse(JSON.stringify(this.pendingContracts.get(contractId)))
+    } else if (this.clearedContracts.has(contractId)) {
+      return JSON.parse(JSON.stringify(this.clearedContracts.get(contractId)))
+    } else {
+      throw new Error('Cannot locate contract')
+    }
+  }
+
   public getHeight() {
     // get the current height of the chain
     return this.chain.length - 1

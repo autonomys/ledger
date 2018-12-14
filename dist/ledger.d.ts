@@ -44,6 +44,7 @@ export declare class Ledger extends EventEmitter {
     computeHostPayment(uptime: number, spacePledged: number, interval: number, pledgeTxId: string): Promise<number>;
     private isBestBlockSolution;
     getBalance(address: string): number;
+    getContract(contractPublicKey: string): IContract;
     getHeight(): number;
     getLastBlockId(): string;
     setBlockTime(blockTime: number): void;
