@@ -358,7 +358,7 @@ export class Ledger extends EventEmitter {
     let nexusBalance: number, txStorageCost: number, txFee: number, farmerBalance: number 
 
     switch(tx.value.type) {
-      case('credit'):
+      case('credit'): {
         // credit the recipient
         if (this.pendingBalances.has(tx.value.receiver)) {
           let receiverBalance = this.pendingBalances.get(tx.value.receiver)
@@ -383,7 +383,9 @@ export class Ledger extends EventEmitter {
         nexusBalance += txStorageCost
         this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance)
         break
-      case('pledge'):
+      }
+        
+      case('pledge'): {
         // add the pledge to pledges
         this.pendingPledges.set(
           record.key, {
@@ -409,7 +411,9 @@ export class Ledger extends EventEmitter {
           nexusBalance += tx.value.cost
           this.pendingBalances.set(NEXUS_ADDRESS, nexusBalance)
           break
-      case('contract'):
+      }
+        
+      case('contract'): {
         // have to ensure the farmer does not apply a tx fee to the block storage payment 
 
         // add the contract to contracts
@@ -454,7 +458,9 @@ export class Ledger extends EventEmitter {
         reserverBalance -= tx.value.amount
         this.pendingBalances.set(reserverAddress, reserverBalance)
         break
-      case('nexus'):
+      }
+        
+      case('nexus'): {
         // nexus originaly paid tx cost for pledge
         // nexus is now paying tx cost for payment
         // host has to pay back both tx costs to the nexus (deducted from payment)
@@ -490,8 +496,11 @@ export class Ledger extends EventEmitter {
           this.pendingBalances.set(tx.value.receiver, tx.value.amount)
         }
         break
-      default:
+      }
+        
+      default: {
         throw new Error('Unkown tx type')
+      }
     }  
   }
   
@@ -1348,7 +1357,7 @@ export class Tx {
       }
 
       // validate replicas within range
-      if (!(this._value.replicationFactor >= 2 || this._value.replicationFactor <= Math.log2(hostCount))) {
+      if (!(this._value.replicationFactor >= 1 || this._value.replicationFactor <= Math.log2(hostCount))) {
         response.reason = 'invalid contract tx, replicas out of range'
         return response
       }
