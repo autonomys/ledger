@@ -1276,9 +1276,11 @@ export class Tx {
     }
 
     // tx fee is correct
-    if (this._value.cost <= size * immutableCost && this._value.type !== 'contract') {
-      response.reason = 'invalid tx, tx fee is too small'
-      return response
+    if (!(this._value.cost >= size * immutableCost)) {
+      if (this.value.type !== 'contract') {
+        response.reason = 'invalid tx, tx fee is too small'
+        return response
+      }
     }
 
     // address has funds
