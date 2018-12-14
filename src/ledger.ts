@@ -835,7 +835,7 @@ export class Ledger extends EventEmitter {
     
     const cost = this.clearedMutableCost * spaceReserved * replicationFactor * ttl
 
-    const tx = await Tx.createMutableContractTx(profile.publicKey, spaceReserved, replicationFactor, ttl, cost, contractSig, contractId, this.clearedImmutableCost, profile.privateKeyObject)
+    const tx = await Tx.createMutableContractTx(profile.publicKey, cost, spaceReserved, replicationFactor, ttl, contractSig, contractId, this.clearedImmutableCost, profile.privateKeyObject)
 
     // check to make sure you have the funds available 
     if (tx.value.cost > this.pendingBalances.get(crypto.getHash(profile.publicKey))) {
