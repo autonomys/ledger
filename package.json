@@ -14,9 +14,9 @@
     "typescript": "^3.0.1"
   },
   "dependencies": {
-    "@subspace/crypto": "github:subspace/crypto",
-    "@subspace/database": "github:subspace/database",
-    "@subspace/utils": "github:subspace/utils"
+    "@subspace/crypto": "https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/crypto.git",
+    "@subspace/database": "https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/database.git",
+    "@subspace/utils": "https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/utils.git"
   },
   "scripts": {
     "build": "rm -rf dist/* && tsc -b",
