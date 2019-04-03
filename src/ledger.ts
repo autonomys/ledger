@@ -427,6 +427,17 @@ export class Ledger extends EventEmitter {
       case('contract'): {
         // have to ensure the farmer does not apply a tx fee to the block storage payment 
 
+        // why are record.key and tx.value.contractId not the same?
+          // immutable vs mutable contracts ... 
+          // goes back to original dilemma, if immutable contracts can have mutable state
+          // this would work for block storage, as they could be organized around shards as well
+            // each block, farmer would check size of leder storage contract
+              // if space avaiable then add the block header and txs to appropriate shard
+              // if not, then create a new immutalbe storage contract, paid for by the nexus
+              // nexus of course needs some starting credits to pay out of (must be inlcuded in credit supply)
+            // the contract holders would not store anything unless the block was valid
+            // and the contract state would be append only, but still a mutable record
+
         // add the contract to contracts
         this.pendingContracts.set(
           record.key, {
