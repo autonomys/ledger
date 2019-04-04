@@ -4,6 +4,7 @@ import { getClosestIdByXor } from '@subspace/utils'
 import { Record, IValue } from '@subspace/database'
 import { EventEmitter } from 'events'
 import { key } from 'openpgp';
+import { start } from 'repl';
 
 // Design Notes
 
@@ -633,11 +634,13 @@ export class Ledger extends EventEmitter {
     return blockTest
   }
 
-  public async applyBlock(block: Record) {
+  public async applyBlock(block: Record, elapsedTime?: number) {
     // called from bootstrap after block is ready
     // called from self after interval expires
     // this is the best block for this round
     // apply the block to UTXO and reset everything for the next round
+
+    const startTime = Date.now()
 
     // create a reward tx for this block and add to valid tx's 
     const profile = this.wallet.getProfile()
@@ -784,12 +787,16 @@ export class Ledger extends EventEmitter {
 
     // set a new interval to wait before applying the next most valid block
     if (this.hasLedger) {
+
+      const currentTime = Date.now()
+      elapsedTime += startTime - currentTime
+
       setTimeout( async () => {
         const blockId = this.validBlocks[0]
         const blockValue = this.pendingBlocks.get(blockId)
         const blockRecord = Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)))
         await this.applyBlock(blockRecord)
-      }, BLOCK_IN_MS)
+      }, BLOCK_IN_MS + elapsedTime)
     }
   }
 

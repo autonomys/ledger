@@ -360,6 +360,16 @@ class Ledger extends events_1.EventEmitter {
             }
             case ('contract'): {
                 // have to ensure the farmer does not apply a tx fee to the block storage payment 
+                // why are record.key and tx.value.contractId not the same?
+                // immutable vs mutable contracts ... 
+                // goes back to original dilemma, if immutable contracts can have mutable state
+                // this would work for block storage, as they could be organized around shards as well
+                // each block, farmer would check size of leder storage contract
+                // if space avaiable then add the block header and txs to appropriate shard
+                // if not, then create a new immutalbe storage contract, paid for by the nexus
+                // nexus of course needs some starting credits to pay out of (must be inlcuded in credit supply)
+                // the contract holders would not store anything unless the block was valid
+                // and the contract state would be append only, but still a mutable record
                 // add the contract to contracts
                 this.pendingContracts.set(record.key, {
                     id: record.key,
@@ -532,11 +542,12 @@ class Ledger extends events_1.EventEmitter {
         blockTest.valid = true;
         return blockTest;
     }
-    async applyBlock(block) {
+    async applyBlock(block, elapsedTime) {
         // called from bootstrap after block is ready
         // called from self after interval expires
         // this is the best block for this round
         // apply the block to UTXO and reset everything for the next round
+        const startTime = Date.now();
         // create a reward tx for this block and add to valid tx's 
         const profile = this.wallet.getProfile();
         // save the block and add to cleared blocks, flush the pending blocks 
@@ -661,12 +672,14 @@ class Ledger extends events_1.EventEmitter {
         }
         // set a new interval to wait before applying the next most valid block
         if (this.hasLedger) {
+            const currentTime = Date.now();
+            elapsedTime += startTime - currentTime;
             setTimeout(async () => {
                 const blockId = this.validBlocks[0];
                 const blockValue = this.pendingBlocks.get(blockId);
                 const blockRecord = database_1.Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)));
                 await this.applyBlock(blockRecord);
-            }, BLOCK_IN_MS);
+            }, BLOCK_IN_MS + elapsedTime);
         }
     }
     async createCreditTx(sender, receiver, amount) {

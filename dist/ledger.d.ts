@@ -60,7 +60,7 @@ export declare class Ledger extends EventEmitter {
         valid: boolean;
         reason: string;
     }>;
-    applyBlock(block: Record): Promise<void>;
+    applyBlock(block: Record, elapsedTime?: number): Promise<void>;
     createCreditTx(sender: string, receiver: string, amount: number): Promise<Record>;
     createPledgeTx(sender: string, proof: string, spacePledged: number, interval?: number, immutableCost?: number): Promise<Record>;
     createNexusTx(sender: string, pledgeTx: string, amount: number, immutableCost: number): Promise<Record>;
