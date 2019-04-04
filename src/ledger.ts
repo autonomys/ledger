@@ -91,6 +91,7 @@ export class Ledger extends EventEmitter {
 
   isFarming = false
   hasLedger = false
+  genesisTime = 0
 
   constructor(
     public storage: any,
@@ -225,7 +226,7 @@ export class Ledger extends EventEmitter {
     }
 
     const block = new Block(blockData)
-
+  
     // compute cost of mutable and immutable storage
     block.setMutableCost(this.computeMutableCost(100, blockData.pledge))
     block.setImmutableCost(this.computeImmutableCost(blockData.mutableCost, blockData.mutableReserved, blockData.immutableReserved))
@@ -246,6 +247,8 @@ export class Ledger extends EventEmitter {
     // create the block, sign and convert to a record, emit and apply
     await block.sign(profile.privateKeyObject)
     const blockRecord = await Record.createImmutable(block.value, false, profile.publicKey)
+    
+
     this.emit('block-solution', JSON.parse(JSON.stringify(blockRecord)))
     await blockRecord.unpack(profile.privateKeyObject)
     await this.applyBlock(blockRecord)
@@ -641,6 +644,9 @@ export class Ledger extends EventEmitter {
     // apply the block to UTXO and reset everything for the next round
 
     const startTime = Date.now()
+    if (this.chain.length === 0) {
+      this.genesisTime = block.value.createdAt
+    }
 
     // create a reward tx for this block and add to valid tx's 
     const profile = this.wallet.getProfile()

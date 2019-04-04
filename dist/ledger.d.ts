@@ -36,6 +36,7 @@ export declare class Ledger extends EventEmitter {
     pendingImmutableCost: number;
     isFarming: boolean;
     hasLedger: boolean;
+    genesisTime: number;
     constructor(storage: any, wallet: any);
     static getMutableCost(creditSupply: number, spaceAvailable: number): number;
     static getImmutableCost(mutableCost: number, mutableReserved: number, immutableReserved: number): number;

@@ -81,6 +81,7 @@ class Ledger extends events_1.EventEmitter {
         this.clearedImmutableCost = 0;
         this.isFarming = false;
         this.hasLedger = false;
+        this.genesisTime = 0;
         this.clearedBalances.set(NEXUS_ADDRESS, 10000);
         // this.clearedBalances.set(FARMER_ADDRESS, 0)
     }
@@ -548,6 +549,9 @@ class Ledger extends events_1.EventEmitter {
         // this is the best block for this round
         // apply the block to UTXO and reset everything for the next round
         const startTime = Date.now();
+        if (this.chain.length === 0) {
+            this.genesisTime = block.value.createdAt;
+        }
         // create a reward tx for this block and add to valid tx's 
         const profile = this.wallet.getProfile();
         // save the block and add to cleared blocks, flush the pending blocks 
