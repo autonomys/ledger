@@ -683,7 +683,7 @@ class Ledger extends events_1.EventEmitter {
                 const blockValue = this.pendingBlocks.get(blockId);
                 const blockRecord = database_1.Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)));
                 await this.applyBlock(blockRecord);
-            }, BLOCK_IN_MS + elapsedTime);
+            }, BLOCK_IN_MS);
         }
     }
     async createCreditTx(sender, receiver, amount) {
@@ -945,7 +945,7 @@ class Block {
         // computes the time delay for my solution, later a real VDF
         const delay = crypto.createProofOfTime(seed);
         const maxDelay = 1024000;
-        return Math.floor((delay / maxDelay) * (BLOCK_IN_MS - elapsedTime));
+        return Math.floor((delay / maxDelay) * (BLOCK_IN_MS));
     }
     async sign(privateKeyObject) {
         // signs the block

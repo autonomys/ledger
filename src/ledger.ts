@@ -802,7 +802,7 @@ export class Ledger extends EventEmitter {
         const blockValue = this.pendingBlocks.get(blockId)
         const blockRecord = Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)))
         await this.applyBlock(blockRecord)
-      }, BLOCK_IN_MS + elapsedTime)
+      }, BLOCK_IN_MS)
     }
   }
 
@@ -1144,7 +1144,7 @@ export class Block {
     // computes the time delay for my solution, later a real VDF
     const delay = crypto.createProofOfTime(seed)
     const maxDelay = 1024000
-    return Math.floor((delay / maxDelay) * (BLOCK_IN_MS - elapsedTime))
+    return Math.floor((delay / maxDelay) * (BLOCK_IN_MS))
   }
 
   public async sign(privateKeyObject: any) {
