@@ -216,11 +216,11 @@ class Ledger extends events_1.EventEmitter {
         await blockRecord.unpack(profile.privateKeyObject);
         await this.applyBlock(blockRecord);
     }
-    computeSolution(block, previousBlock, maxDelay) {
+    computeSolution(block, previousBlock, elapsedTime) {
         // called once a new block round starts
         // create a dummy block to compute solution and delay
         const solution = block.getBestSolution(this.wallet.profile.proof.plot, previousBlock);
-        const time = block.getTimeDelay();
+        const time = block.getTimeDelay(elapsedTime);
         // set a timer to wait for time delay to checking if soltuion is best
         setTimeout(async () => {
             if (this.isBestBlockSolution(solution)) {
@@ -670,14 +670,14 @@ class Ledger extends events_1.EventEmitter {
             }
         }
         this.emit('applied-block', block);
+        const currentTime = Date.now();
+        elapsedTime += startTime - currentTime;
         if (this.isFarming) {
             const blockValue = new Block(block.value.content);
-            this.computeSolution(blockValue, block.key);
+            this.computeSolution(blockValue, block.key, elapsedTime);
         }
         // set a new interval to wait before applying the next most valid block
         if (this.hasLedger) {
-            const currentTime = Date.now();
-            elapsedTime += startTime - currentTime;
             setTimeout(async () => {
                 const blockId = this.validBlocks[0];
                 const blockValue = this.pendingBlocks.get(blockId);
@@ -941,11 +941,11 @@ class Block {
         const proof = crypto.createProofOfSpace(seed, this._value.pledge);
         return this._value.solution === this.getBestSolution(proof.plot, previousBlock);
     }
-    getTimeDelay(seed = this._value.solution) {
+    getTimeDelay(elapsedTime, seed = this._value.solution) {
         // computes the time delay for my solution, later a real VDF
         const delay = crypto.createProofOfTime(seed);
         const maxDelay = 1024000;
-        return Math.floor((delay / maxDelay) * BLOCK_IN_MS);
+        return Math.floor((delay / maxDelay) * (BLOCK_IN_MS - elapsedTime));
     }
     async sign(privateKeyObject) {
         // signs the block
