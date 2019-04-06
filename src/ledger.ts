@@ -638,7 +638,7 @@ export class Ledger extends EventEmitter {
     return blockTest
   }
 
-  public async applyBlock(block: Record, elapsedTime?: number) {
+  public async applyBlock(block: Record, elapsedTime = 0) {
     // called from bootstrap after block is ready
     // called from self after interval expires
     // this is the best block for this round
@@ -784,12 +784,12 @@ export class Ledger extends EventEmitter {
     this.emit('applied-block', block)
 
     const currentTime = Date.now()
-    elapsedTime += startTime - currentTime
+    elapsedTime += currentTime - startTime
 
     if (this.isFarming) {
       const blockValue = new Block(block.value.content)
       const timeDelay = this.computeSolution(blockValue, block.key, elapsedTime)
-      if (timeDelay >= (BLOCK_IN_MS + elapsedTime)) {
+      if (timeDelay >= (BLOCK_IN_MS - elapsedTime)) {
         throw new Error('Proof of time will take longer to compute than the block interval, a valid block will not be available to apply.')
       }
     }
@@ -804,7 +804,7 @@ export class Ledger extends EventEmitter {
         const blockValue = this.pendingBlocks.get(blockId)
         const blockRecord = Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)))
         this.applyBlock(blockRecord)
-      }, BLOCK_IN_MS + elapsedTime)
+      }, BLOCK_IN_MS - elapsedTime)
     }
   }
 
@@ -1146,7 +1146,7 @@ export class Block {
     // computes the time delay for my solution, later a real VDF
     const delay = crypto.createProofOfTime(seed)
     const maxDelay = 1024000
-    return Math.floor((delay / maxDelay) * (BLOCK_IN_MS))
+    return Math.floor((delay / maxDelay) * (BLOCK_IN_MS - elapsedTime))
   }
 
   public async sign(privateKeyObject: any) {
