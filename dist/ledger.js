@@ -232,6 +232,7 @@ class Ledger extends events_1.EventEmitter {
                 // if still best solution when block interval expires, it will be applied
             }
         }, time);
+        return time;
     }
     async createBlock() {
         // called from compute solution after my time delay expires or on bootstrap
@@ -674,10 +675,14 @@ class Ledger extends events_1.EventEmitter {
         elapsedTime += startTime - currentTime;
         if (this.isFarming) {
             const blockValue = new Block(block.value.content);
-            this.computeSolution(blockValue, block.key, elapsedTime);
+            const timeDelay = this.computeSolution(blockValue, block.key, elapsedTime);
+            if (timeDelay >= (BLOCK_IN_MS + elapsedTime)) {
+                throw new Error('Proof of time will take longer to compute than the block interval, a valid block will not be available to apply.');
+            }
         }
         // set a new interval to wait before applying the next most valid block
         // what if the interval expires before we have computed a solution for the current block?
+        // we can pass back the solution from the interval and 
         if (this.hasLedger) {
             setTimeout(async () => {
                 const blockId = this.validBlocks[0];

@@ -50,7 +50,7 @@ export declare class Ledger extends EventEmitter {
     getLastBlockId(): string;
     setBlockTime(blockTime: number): void;
     bootstrap(spacePledged?: number, pledgeInterval?: number): Promise<void>;
-    computeSolution(block: Block, previousBlock: string, elapsedTime: number): void;
+    computeSolution(block: Block, previousBlock: string, elapsedTime: number): number;
     private createBlock;
     onTx(record: Record): Promise<{
         valid: boolean;
