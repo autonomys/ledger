@@ -804,7 +804,7 @@ export class Ledger extends EventEmitter {
         const blockValue = this.pendingBlocks.get(blockId)
         const blockRecord = Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)))
         this.applyBlock(blockRecord)
-      }, BLOCK_IN_MS)
+      }, BLOCK_IN_MS + elapsedTime)
     }
   }
 

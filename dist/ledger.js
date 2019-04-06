@@ -689,7 +689,7 @@ class Ledger extends events_1.EventEmitter {
                 const blockValue = this.pendingBlocks.get(blockId);
                 const blockRecord = database_1.Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)));
                 this.applyBlock(blockRecord);
-            }, BLOCK_IN_MS);
+            }, BLOCK_IN_MS + elapsedTime);
         }
     }
     async createCreditTx(sender, receiver, amount) {
