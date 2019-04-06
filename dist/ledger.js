@@ -677,12 +677,13 @@ class Ledger extends events_1.EventEmitter {
             this.computeSolution(blockValue, block.key, elapsedTime);
         }
         // set a new interval to wait before applying the next most valid block
+        // what if the interval expires before we have computed a solution for the current block?
         if (this.hasLedger) {
             setTimeout(async () => {
                 const blockId = this.validBlocks[0];
                 const blockValue = this.pendingBlocks.get(blockId);
                 const blockRecord = database_1.Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)));
-                await this.applyBlock(blockRecord);
+                this.applyBlock(blockRecord);
             }, BLOCK_IN_MS);
         }
     }

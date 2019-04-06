@@ -741,8 +741,6 @@ export class Ledger extends EventEmitter {
     await contractRecord.unpack(profile.privateKeyObject)
     this.validTxs.set(contractRecord.key, JSON.parse(JSON.stringify(contractRecord.value)))
 
-
-    
     // reset cleared balances back to pending (fast-forward cleared utxo to this block)
     this.clearedSpacePledged = this.pendingSpacePledged
     this.clearedMutableReserved = this.pendingMutableReserved
@@ -752,11 +750,9 @@ export class Ledger extends EventEmitter {
     this.clearedCreditSupply = this.pendingCreditSupply
     this.clearedMutableCost = this.pendingMutableCost
     this.clearedImmutableCost = this.pendingImmutableCost
-
     this.clearedBalances = new Map(this.pendingBalances)
     this.clearedContracts = new Map(this.pendingContracts)
     this.clearedPledges = new Map(this.pendingPledges)
-
     this.pendingContracts.clear()
     this.pendingPledges.clear()
     
@@ -795,13 +791,14 @@ export class Ledger extends EventEmitter {
     }
 
     // set a new interval to wait before applying the next most valid block
+    // what if the interval expires before we have computed a solution for the current block?
     if (this.hasLedger) {
 
       setTimeout( async () => {
         const blockId = this.validBlocks[0]
         const blockValue = this.pendingBlocks.get(blockId)
         const blockRecord = Record.readUnpacked(blockId, JSON.parse(JSON.stringify(blockValue)))
-        await this.applyBlock(blockRecord)
+        this.applyBlock(blockRecord)
       }, BLOCK_IN_MS)
     }
   }
