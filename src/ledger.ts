@@ -583,8 +583,10 @@ export class Ledger extends EventEmitter {
         } else {
           // throw error for now, later request the tx, then validate the tx
           console.log('Missing tx is: ', txId)
-          throw new Error('Tx in proposed block is not in the mem pool')
-
+          return {
+            valid: false,
+            reason: 'Tx in proposed block is not in the mem pool'
+          }
         }
       }
 
@@ -1161,10 +1163,6 @@ export class Block {
   }
 
   // private methods
-
- 
-
-
 }
 
 export class Tx {
