@@ -1,4 +1,4 @@
-import {IPledge, IContract, IChain, IChainBlock, IChainTx, IBlock, ITx, IBlockValue, IBlockContent, ITxContent, ICreditTxContent, IPledgeTxContent, INexusTxContent, IContractTxContent, IAccount, IRewardTxContent} from './interfaces'
+import {IPledge, IContract, IChain, IChainBlock, IChainTx, IBlock, ITx, IBlockValue, IBlockContent, ITxContent, IRewardTxContent,  ICreditTxContent, IPledgeTxContent, INexusTxContent, IContractTxContent, IAccount} from './interfaces'
 import * as crypto from '@subspace/crypto'
 import { getClosestIdByXor } from '@subspace/utils'
 import {Record, ImmutableRecord, IImmutableRecord } from '@subspace/database'
@@ -6,6 +6,8 @@ import Wallet, { IProfileObject } from '@subspace/wallet'
 import Storage from '@subspace/storage'
 import { EventEmitter } from 'events'
 import { resolve } from 'path'
+
+export { IBlock, ITx, IBlockValue, IBlockContent, ITxContent, IRewardTxContent, ICreditTxContent, IPledgeTxContent, INexusTxContent, IContractTxContent, IAccount }
 
 // TODO for next iteration
   // Add nonces to txs and verify nonces are applied correctly across accounts

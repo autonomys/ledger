@@ -1,8 +1,9 @@
-import { IPledge, IContract, IChainBlock, IChainTx, IBlock, ITx, IBlockContent, ITxContent, IAccount } from './interfaces';
+import { IPledge, IContract, IChainBlock, IChainTx, IBlock, ITx, IBlockValue, IBlockContent, ITxContent, IRewardTxContent, ICreditTxContent, IPledgeTxContent, INexusTxContent, IContractTxContent, IAccount } from './interfaces';
 import { ImmutableRecord, IImmutableRecord } from '@subspace/database';
 import Wallet, { IProfileObject } from '@subspace/wallet';
 import Storage from '@subspace/storage';
 import { EventEmitter } from 'events';
+export { IBlock, ITx, IBlockValue, IBlockContent, ITxContent, IRewardTxContent, ICreditTxContent, IPledgeTxContent, INexusTxContent, IContractTxContent, IAccount };
 export declare class Ledger extends EventEmitter {
     storage: Storage;
     wallet: Wallet;
