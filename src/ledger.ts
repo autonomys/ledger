@@ -53,7 +53,6 @@ const MAX_PLEDGE_SIZE = 10000000000       // 10 GB for now
 const NEXUS_ADDRESS = crypto.getHash('nexus')
 const TX_FEE_MULTIPLIER = 1.02
 
-
 /* 
   Basic Cases
 
@@ -146,6 +145,11 @@ export class Ledger extends EventEmitter {
       }
       return memData
     },
+    getBlockRecordd: async (key: string) => {
+      const data = await this.blockPool.getBlock(key)
+      const value = data.value
+      return await Block.loadBlockFromData({key, value})
+    },
     applyBlock: async (key: string) => {
       const blockData = await this.blockPool.getBlock(key)
       if (!blockData.cleared) {
@@ -186,7 +190,8 @@ export class Ledger extends EventEmitter {
         if (value.valid === valid && value.cleared === cleared) {
           results.push({
             key: key, 
-            value: value.value})
+            value: JSON.parse(JSON.stringify(value.value))
+          })
         }
       })
       return results
@@ -253,11 +258,29 @@ export class Ledger extends EventEmitter {
         if (value.valid === valid && value.cleared === cleared) {
           results.push({
             key: key,
-            value: value.value
+            value: JSON.parse(JSON.stringify(value.value))
           })
         }
       })
       return results
+    }
+  }
+
+  public contracts = {
+    // contract
+      // only added as a block is being applied and applies its txs
+      // only removed if a block is rolled back (maybe do a tx diff first?)
+      // should expire at some point (may have to check ttl on read)
+    _contracts: new Map<string, IContract>(),
+    addContract: (address: string, contract: IContract) => {
+      this.contracts._contracts.set(contract.txId, contract)
+      this.accounts.addContract(address, contract)
+    },
+    getContract: (contractTxId: string) => {
+      return this.contracts._contracts.get(contractTxId)
+    },
+    expireContract: () => {
+      // later
     }
   }
 
@@ -276,12 +299,9 @@ export class Ledger extends EventEmitter {
       // only added as a block is being applied and applies its txs 
       // only removed if a block is rolled back (maybe do a tx diff first?)
       // should these expire?
-    // contract
-      // only added as a block is being applied and applies its txs
-      // only removed if a block is rolled back (maybe do a tx diff first?)
-      // should expire at some point (may have to check ttl on read)
+    
     _accounts: new Map<string, IAccount>(),
-    crreateAccount: (address: string) => {
+    createAccount: (address: string) => {
       this.accounts._accounts.set(address, {
         balance: {
           cleared: 0,
@@ -304,10 +324,10 @@ export class Ledger extends EventEmitter {
       return this.accounts._accounts.get(address).balance.pending
     },
     getPledge: (address: string) => {
-      return this.accounts._accounts.get(address).pledge
+      return JSON.parse(JSON.stringify(this.accounts._accounts.get(address).pledge))
     },
     getContract: (address: string) => {
-      return this.accounts._accounts.get(address).contracts.values().next().value
+      return JSON.parse(JSON.stringify(this.accounts._accounts.get(address).contracts.values().next().value))
       // const contractId = crypto.getHash(contractPublicKey)
       // if (this.contracts.has(contractId)) {
       //   return JSON.parse(JSON.stringify(this.contracts.get(contractId)))
@@ -320,7 +340,7 @@ export class Ledger extends EventEmitter {
       if (this.accounts._accounts.has(address)) {
         account = this.accounts.getAccount(address)
       } else {
-        this.accounts.crreateAccount(address)
+        this.accounts.createAccount(address)
         account = this.accounts.getAccount(address)
       }
       return account
@@ -659,11 +679,17 @@ export class Ledger extends EventEmitter {
   }
 
   async onBlock(block: Block) {
-
+    return {
+      valid: true,
+      reason: ''
+    }
   }
 
   async onTx(tx: Tx) {
-    
+    return {
+      valid: true,
+      reason: ''
+    }
   }
 
     // Receive a block

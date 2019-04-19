@@ -20,6 +20,7 @@ export declare class Ledger extends EventEmitter {
         bestBlock: Block;
         addBlock: (block: Block, valid: boolean, cleared: boolean) => Promise<void>;
         getBlock: (key: string) => Promise<IChainBlock>;
+        getBlockRecordd: (key: string) => Promise<Block>;
         applyBlock: (key: string) => Promise<void>;
         revertBlock: (key: string) => Promise<void>;
         expireBlock: (key: string) => Promise<void>;
@@ -35,14 +36,20 @@ export declare class Ledger extends EventEmitter {
         expireTx: (key: string) => Promise<void>;
         getTxs: (valid?: boolean, cleared?: boolean) => ITx[];
     };
+    contracts: {
+        _contracts: Map<string, IContract>;
+        addContract: (address: string, contract: IContract) => void;
+        getContract: (contractTxId: string) => IContract;
+        expireContract: () => void;
+    };
     accounts: {
         _accounts: Map<string, IAccount>;
-        crreateAccount: (address: string) => void;
+        createAccount: (address: string) => void;
         getAccount: (address: string) => IAccount;
         getActiveBalance: (address: string) => number;
         getPendingBalance: (address: string) => number;
-        getPledge: (address: string) => IPledge;
-        getContract: (address: string) => IContract;
+        getPledge: (address: string) => any;
+        getContract: (address: string) => any;
         getOrCreateAccount: (address: string) => IAccount;
         updateBalance: (address: string, update: number, type: "pending" | "cleared") => void;
         addPledge: (address: string, pledge: IPledge) => void;
@@ -68,8 +75,14 @@ export declare class Ledger extends EventEmitter {
     private isBestProofOfSpace;
     private buildBlock;
     private farmNextBlock;
-    onBlock(block: Block): Promise<void>;
-    onTx(tx: Tx): Promise<void>;
+    onBlock(block: Block): Promise<{
+        valid: boolean;
+        reason: string;
+    }>;
+    onTx(tx: Tx): Promise<{
+        valid: boolean;
+        reason: string;
+    }>;
     onTxCreated(tx: Tx): Promise<void>;
     onTxReceived(txData: ITx): Promise<void>;
     applyTx(tx: Tx, type: 'pending' | 'cleared'): Promise<{

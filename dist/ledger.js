@@ -142,6 +142,11 @@ class Ledger extends events_1.EventEmitter {
                 }
                 return memData;
             },
+            getBlockRecordd: async (key) => {
+                const data = await this.blockPool.getBlock(key);
+                const value = data.value;
+                return await Block.loadBlockFromData({ key, value });
+            },
             applyBlock: async (key) => {
                 const blockData = await this.blockPool.getBlock(key);
                 if (!blockData.cleared) {
@@ -182,7 +187,7 @@ class Ledger extends events_1.EventEmitter {
                     if (value.valid === valid && value.cleared === cleared) {
                         results.push({
                             key: key,
-                            value: value.value
+                            value: JSON.parse(JSON.stringify(value.value))
                         });
                     }
                 });
@@ -249,11 +254,28 @@ class Ledger extends events_1.EventEmitter {
                     if (value.valid === valid && value.cleared === cleared) {
                         results.push({
                             key: key,
-                            value: value.value
+                            value: JSON.parse(JSON.stringify(value.value))
                         });
                     }
                 });
                 return results;
+            }
+        };
+        this.contracts = {
+            // contract
+            // only added as a block is being applied and applies its txs
+            // only removed if a block is rolled back (maybe do a tx diff first?)
+            // should expire at some point (may have to check ttl on read)
+            _contracts: new Map(),
+            addContract: (address, contract) => {
+                this.contracts._contracts.set(contract.txId, contract);
+                this.accounts.addContract(address, contract);
+            },
+            getContract: (contractTxId) => {
+                return this.contracts._contracts.get(contractTxId);
+            },
+            expireContract: () => {
+                // later
             }
         };
         this.accounts = {
@@ -270,12 +292,8 @@ class Ledger extends events_1.EventEmitter {
             // only added as a block is being applied and applies its txs 
             // only removed if a block is rolled back (maybe do a tx diff first?)
             // should these expire?
-            // contract
-            // only added as a block is being applied and applies its txs
-            // only removed if a block is rolled back (maybe do a tx diff first?)
-            // should expire at some point (may have to check ttl on read)
             _accounts: new Map(),
-            crreateAccount: (address) => {
+            createAccount: (address) => {
                 this.accounts._accounts.set(address, {
                     balance: {
                         cleared: 0,
@@ -298,10 +316,10 @@ class Ledger extends events_1.EventEmitter {
                 return this.accounts._accounts.get(address).balance.pending;
             },
             getPledge: (address) => {
-                return this.accounts._accounts.get(address).pledge;
+                return JSON.parse(JSON.stringify(this.accounts._accounts.get(address).pledge));
             },
             getContract: (address) => {
-                return this.accounts._accounts.get(address).contracts.values().next().value;
+                return JSON.parse(JSON.stringify(this.accounts._accounts.get(address).contracts.values().next().value));
                 // const contractId = crypto.getHash(contractPublicKey)
                 // if (this.contracts.has(contractId)) {
                 //   return JSON.parse(JSON.stringify(this.contracts.get(contractId)))
@@ -315,7 +333,7 @@ class Ledger extends events_1.EventEmitter {
                     account = this.accounts.getAccount(address);
                 }
                 else {
-                    this.accounts.crreateAccount(address);
+                    this.accounts.createAccount(address);
                     account = this.accounts.getAccount(address);
                 }
                 return account;
@@ -587,8 +605,16 @@ class Ledger extends events_1.EventEmitter {
         this.proofOfTime = await this.solveBlockChallenge(pendingBlock, lastBlock.key);
     }
     async onBlock(block) {
+        return {
+            valid: true,
+            reason: ''
+        };
     }
     async onTx(tx) {
+        return {
+            valid: true,
+            reason: ''
+        };
     }
     // Receive a block
     // find parent
