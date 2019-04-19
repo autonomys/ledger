@@ -263,6 +263,7 @@ export class Ledger extends EventEmitter {
 
   public accounts = {
     // TODO: should load the state from memory on startup
+    // TODO: expire pledges and contracts
 
     // cleared balance
       // adjusted as a block is being applied and applies its txs
@@ -343,16 +344,20 @@ export class Ledger extends EventEmitter {
       this.accounts._accounts.set(address, account)
     },
     addPledge: (address: string, pledge: IPledge) => {
-
+      const account = this.accounts.getOrCreateAccount(address) 
+      account.pledge = pledge
+      this.accounts._accounts.set(address, account)
     },
     expirePledge: (address: string) => {
-
+      // later
     },
     addContract: (address: string, contract: IContract) => {
-
+      const account = this.accounts.getOrCreateAccount(address) 
+      account.contracts.add(contract)
+      this.accounts._accounts.set(address, account)
     },
     expireContract: (address: string, contractId: string) => {
-
+      // later
     }
   }
 
@@ -651,6 +656,14 @@ export class Ledger extends EventEmitter {
     
     // compute the solution
     this.proofOfTime = await this.solveBlockChallenge(pendingBlock, lastBlock.key)  
+  }
+
+  async onBlock(block: Block) {
+
+  }
+
+  async onTx(tx: Tx) {
+    
   }
 
     // Receive a block
@@ -985,8 +998,6 @@ export class Ledger extends EventEmitter {
 
   }
 
-  
-
   public async createRewardTx(receiver: string, amount: number, timestamp: number) {
     const tx = await Tx.createRewardTx(
       receiver,
@@ -1113,6 +1124,13 @@ export class Block extends ImmutableRecord implements IBlock {
     const block = new Block()
     await block.init(content, false, false)
     block.value.type = 'immutable'
+    return block
+  }
+
+  static async loadBlockFromData(blockData: IBlock) {
+    const block = new Block()
+    block.key = blockData.key
+    block.value = blockData.value
     return block
   }
 

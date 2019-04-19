@@ -68,6 +68,8 @@ export declare class Ledger extends EventEmitter {
     private isBestProofOfSpace;
     private buildBlock;
     private farmNextBlock;
+    onBlock(block: Block): Promise<void>;
+    onTx(tx: Tx): Promise<void>;
     onTxCreated(tx: Tx): Promise<void>;
     onTxReceived(txData: ITx): Promise<void>;
     applyTx(tx: Tx, type: 'pending' | 'cleared'): Promise<{
@@ -88,6 +90,7 @@ export declare class Ledger extends EventEmitter {
 export declare class Block extends ImmutableRecord implements IBlock {
     constructor();
     static init(content: IBlockContent): Promise<Block>;
+    static loadBlockFromData(blockData: IBlock): Promise<Block>;
     cast(profile: IProfileObject): Promise<this>;
     addTx(tx: ITx): void;
     setMutableCost(): void;

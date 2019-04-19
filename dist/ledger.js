@@ -258,6 +258,7 @@ class Ledger extends events_1.EventEmitter {
         };
         this.accounts = {
             // TODO: should load the state from memory on startup
+            // TODO: expire pledges and contracts
             // cleared balance
             // adjusted as a block is being applied and applies its txs
             // also adjusted as a block is being reverted (and all of its txs)
@@ -335,12 +336,20 @@ class Ledger extends events_1.EventEmitter {
                 this.accounts._accounts.set(address, account);
             },
             addPledge: (address, pledge) => {
+                const account = this.accounts.getOrCreateAccount(address);
+                account.pledge = pledge;
+                this.accounts._accounts.set(address, account);
             },
             expirePledge: (address) => {
+                // later
             },
             addContract: (address, contract) => {
+                const account = this.accounts.getOrCreateAccount(address);
+                account.contracts.add(contract);
+                this.accounts._accounts.set(address, account);
             },
             expireContract: (address, contractId) => {
+                // later
             }
         };
         this.isFarming = false;
@@ -576,6 +585,10 @@ class Ledger extends events_1.EventEmitter {
         const pendingBlock = await Block.init(content);
         // compute the solution
         this.proofOfTime = await this.solveBlockChallenge(pendingBlock, lastBlock.key);
+    }
+    async onBlock(block) {
+    }
+    async onTx(tx) {
     }
     // Receive a block
     // find parent
@@ -921,6 +934,12 @@ class Block extends database_1.ImmutableRecord {
         const block = new Block();
         await block.init(content, false, false);
         block.value.type = 'immutable';
+        return block;
+    }
+    static async loadBlockFromData(blockData) {
+        const block = new Block();
+        block.key = blockData.key;
+        block.value = blockData.value;
         return block;
     }
     async cast(profile) {
