@@ -5,7 +5,6 @@
   "types": "dist/ledger.d.ts",
   "author": "subspace",
   "license": "MIT",
-  "private": true,
   "devDependencies": {
     "@types/jest": "^23.3.1",
     "@types/node": "^10.9.2",
@@ -15,8 +14,10 @@
   },
   "dependencies": {
     "@subspace/crypto": "https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/crypto.git",
-    "@subspace/database": "https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/database.git",
-    "@subspace/utils": "https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/utils.git"
+    "@subspace/database": "git+https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/database.git",
+    "@subspace/storage": "^1.0.0",
+    "@subspace/utils": "https://c9ed7a77df1c3e0e10413b1580924003c4ae75a3:x-oauth-basic@github.com/subspace/utils.git",
+    "@subspace/wallet": "^1.0.0"
   },
   "scripts": {
     "build": "rm -rf dist/* && tsc -b",

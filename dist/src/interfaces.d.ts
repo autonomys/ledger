@@ -1,4 +1,4 @@
-import { IImmutableRecord, IImmutableRecordValue } from '@subspace/database';
+import { IImmutableRecord, IImmutableRecordValue } from "../node_modules/@subspace/database/src/interfaces";
 export interface IAccount {
     balance: IBalance;
     pledge: IPledge;
