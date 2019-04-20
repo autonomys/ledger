@@ -142,7 +142,7 @@ class Ledger extends events_1.EventEmitter {
                 }
                 return memData;
             },
-            getBlockRecordd: async (key) => {
+            getBlockRecord: async (key) => {
                 const data = await this.blockPool.getBlock(key);
                 const value = data.value;
                 return await Block.loadBlockFromData({ key, value });
@@ -272,7 +272,7 @@ class Ledger extends events_1.EventEmitter {
                 this.accounts.addContract(address, contract);
             },
             getContract: (contractTxId) => {
-                return this.contracts._contracts.get(contractTxId);
+                return JSON.parse(JSON.stringify(this.contracts._contracts.get(contractTxId)));
             },
             expireContract: () => {
                 // later

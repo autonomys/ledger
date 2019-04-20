@@ -145,7 +145,7 @@ export class Ledger extends EventEmitter {
       }
       return memData
     },
-    getBlockRecordd: async (key: string) => {
+    getBlockRecord: async (key: string) => {
       const data = await this.blockPool.getBlock(key)
       const value = data.value
       return await Block.loadBlockFromData({key, value})
@@ -277,7 +277,7 @@ export class Ledger extends EventEmitter {
       this.accounts.addContract(address, contract)
     },
     getContract: (contractTxId: string) => {
-      return this.contracts._contracts.get(contractTxId)
+      return JSON.parse(JSON.stringify(this.contracts._contracts.get(contractTxId)))
     },
     expireContract: () => {
       // later

@@ -20,7 +20,7 @@ export declare class Ledger extends EventEmitter {
         bestBlock: Block;
         addBlock: (block: Block, valid: boolean, cleared: boolean) => Promise<void>;
         getBlock: (key: string) => Promise<IChainBlock>;
-        getBlockRecordd: (key: string) => Promise<Block>;
+        getBlockRecord: (key: string) => Promise<Block>;
         applyBlock: (key: string) => Promise<void>;
         revertBlock: (key: string) => Promise<void>;
         expireBlock: (key: string) => Promise<void>;
@@ -39,7 +39,7 @@ export declare class Ledger extends EventEmitter {
     contracts: {
         _contracts: Map<string, IContract>;
         addContract: (address: string, contract: IContract) => void;
-        getContract: (contractTxId: string) => IContract;
+        getContract: (contractTxId: string) => any;
         expireContract: () => void;
     };
     accounts: {
